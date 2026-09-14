@@ -1,10 +1,13 @@
 import argparse
+import dataclasses
+import json
 from datetime import datetime
+from pathlib import Path
 
 import torch
 import torch.optim as optim
 
-from config import TrainConfig
+from config import TrainConfig, device
 from models.mlp import MLP
 from models.shallow_convnet import ShallowConvNet
 from models.deep_convnet import DeepConvNet
@@ -12,14 +15,10 @@ from training.train import train
 from training.evaluator import evaluate
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
 from utils.logger import get_logger, CSVRecorder
-
-from data.datasets import build_loaders
-
-import json
-import dataclasses
-
 from utils.seed import set_seed
 from utils.env import get_env_info, format_env_info
+
+from data.datasets import build_loaders
 
 
 EXPERIMENTS = {
@@ -40,6 +39,15 @@ def parse_args():
     parser.add_argument("--momentum", type=float, default=0.9)
     parser.add_argument("--no-nesterov", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
+
+    parser.add_argument("--lr-scheduler", type=str, default="none",
+                        choices=["none", "step", "cosine"])
+    parser.add_argument("--step-size", type=int, default=10)
+    parser.add_argument("--gamma", type=float, default=0.1)
+    parser.add_argument("--early-stop-patience", type=int, default=0)
+
+    parser.add_argument("--resume", type=str, default=None,
+                        help="path to checkpoint to resume from")
     return parser.parse_args()
 
 
@@ -53,27 +61,51 @@ def build_config(args):
         momentum=args.momentum,
         nesterov=not args.no_nesterov,
         seed=args.seed,
+        lr_scheduler=args.lr_scheduler,
+        step_size=args.step_size,
+        gamma=args.gamma,
+        early_stop_patience=args.early_stop_patience,
     )
 
 
-def run_experiment(cfg, dataset_name, batch_size):
+def build_scheduler(optimizer, cfg):
+    if cfg.lr_scheduler == "step":
+        return optim.lr_scheduler.StepLR(
+            optimizer, step_size=cfg.step_size, gamma=cfg.gamma,
+        )
+    if cfg.lr_scheduler == "cosine":
+        return optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=cfg.epochs,
+        )
+    return None
+
+
+def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base = "%s_%s" % (cfg.experiment, timestamp)
 
-    log_path  = OUTPUTS_PATH / ("%s.log" % base)
-    csv_path  = OUTPUTS_PATH / ("%s.csv" % base)
+    log_path = OUTPUTS_PATH / ("%s.log" % base)
     ckpt_path = CHECKPOINTS_PATH / ("%s.pt" % base)
-    cfg_path  = OUTPUTS_PATH / ("%s.json" % base)   # ← 新增
+    cfg_path = OUTPUTS_PATH / ("%s.json" % base)
+
+    # CSV：resume 时复用旧的，否则新建
+    if resume_path is not None:
+        old_base = Path(resume_path).stem
+        csv_path = OUTPUTS_PATH / ("%s.csv" % old_base)
+        csv_append = True
+    else:
+        csv_path = OUTPUTS_PATH / ("%s.csv" % base)
+        csv_append = False
 
     logger = get_logger(cfg.experiment, log_path)
-    recorder = CSVRecorder(csv_path)
+    recorder = CSVRecorder(csv_path, append=csv_append)
 
-    # 保存 config + 环境信息
     snapshot = {
         "config": dataclasses.asdict(cfg),
         "dataset": dataset_name,
         "batch_size": batch_size,
         "env": get_env_info(),
+        "resume_from": resume_path,
     }
     with open(cfg_path, "w") as f:
         json.dump(snapshot, f, indent=2, ensure_ascii=False)
@@ -90,30 +122,61 @@ def run_experiment(cfg, dataset_name, batch_size):
         momentum=cfg.momentum,
         nesterov=cfg.nesterov,
     )
+    scheduler = build_scheduler(optimizer, cfg)
+
+    start_epoch = 1
+    best_acc = 0.0
+
+    if resume_path is not None:
+        ckpt = torch.load(resume_path, map_location=device)
+        model.load_state_dict(ckpt["model"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        if scheduler is not None and ckpt.get("scheduler") is not None:
+            scheduler.load_state_dict(ckpt["scheduler"])
+        start_epoch = ckpt["epoch"] + 1
+        best_acc = ckpt["best_acc"]
+        logger.info("Resumed from %s", resume_path)
+        logger.info("Resume at epoch %d, best_acc = %.4f", start_epoch, best_acc)
 
     logger.info("=" * 60)
     logger.info("Experiment: %s", cfg.experiment)
     logger.info("Dataset: %s", dataset_name)
     logger.info("Config: %s", cfg)
-    logger.info(format_env_info())              # ← 打一行环境
+    logger.info(format_env_info())
     logger.info("=" * 60)
 
-    train(model, optimizer, loader_train, loader_val,
-          epochs=cfg.epochs, logger=logger, recorder=recorder)
+    result = train(
+        model, optimizer, loader_train, loader_val,
+        epochs=cfg.epochs,
+        scheduler=scheduler,
+        early_stop_patience=cfg.early_stop_patience,
+        start_epoch=start_epoch,
+        best_acc=best_acc,
+        logger=logger, recorder=recorder,
+    )
 
     test_acc = evaluate(model, loader_test)
     logger.info("Test accuracy = %.4f" % test_acc)
 
-    torch.save(model.state_dict(), ckpt_path)
+    torch.save({
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict() if scheduler is not None else None,
+        "epoch": result["last_epoch"],
+        "best_acc": result["best_acc"],
+        "config": dataclasses.asdict(cfg),
+    }, ckpt_path)
     logger.info("Saved to %s", ckpt_path)
-    logger.info("Config snapshot: %s", cfg_path)
 
 
 def main():
     args = parse_args()
     cfg = build_config(args)
-    set_seed(cfg.seed)  # ← 新增
-    run_experiment(cfg, args.dataset, args.batch_size)
+    set_seed(cfg.seed)
+    run_experiment(cfg,
+                   dataset_name=args.dataset,
+                   batch_size=args.batch_size,
+                   resume_path=args.resume)
 
 
 if __name__ == "__main__":
