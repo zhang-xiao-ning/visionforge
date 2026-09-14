@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import torch
 
-USE_GPU = False
+USE_GPU = True
 dtype = torch.float32
 
 if USE_GPU and torch.cuda.is_available():

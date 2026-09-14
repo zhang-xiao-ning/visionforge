@@ -32,8 +32,7 @@ EXPERIMENTS = {
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train CIFAR-10 models.")
-    parser.add_argument("--experiment", type=str, default="mlp",
-                        choices=list(EXPERIMENTS.keys()))
+    parser.add_argument("--experiment", type=str, default="mlp", choices=list(EXPERIMENTS.keys()))
     parser.add_argument("--dataset", type=str, default="cifar10")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=1)
@@ -42,14 +41,12 @@ def parse_args():
     parser.add_argument("--no-nesterov", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
 
-    parser.add_argument("--lr-scheduler", type=str, default="none",
-                        choices=["none", "step", "cosine"])
+    parser.add_argument("--lr-scheduler", type=str, default="none", choices=["none", "step", "cosine"])
     parser.add_argument("--step-size", type=int, default=10)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--early-stop-patience", type=int, default=0)
 
-    parser.add_argument("--resume", type=str, default=None,
-                        help="path to checkpoint to resume from")
+    parser.add_argument("--resume", type=str, default=None, help="path to checkpoint to resume from")
     return parser.parse_args()
 
 
