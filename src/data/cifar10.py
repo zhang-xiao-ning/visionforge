@@ -1,36 +1,20 @@
-import torchvision.transforms as T
 import torchvision.datasets as dset
-from torch.utils.data import DataLoader
-from torch.utils.data import sampler
 
 from utils.path import DATASETS_PATH
-from config import NUM_TRAIN, BATCH_SIZE
-
-transform = T.Compose([
-    T.ToTensor(),
-    T.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-])
+from data.transforms import cifar10_transform
 
 
-def build_train_loader():
-    train_set = dset.CIFAR10(DATASETS_PATH, train=True, download=False, transform=transform)
-    loader = DataLoader(
-        train_set, batch_size=BATCH_SIZE,
-        sampler=sampler.SubsetRandomSampler(range(NUM_TRAIN)),
+def build_datasets():
+    """返回 (train_set, val_set, test_set)。"""
+    transform = cifar10_transform()
+
+    train_set = dset.CIFAR10(
+        DATASETS_PATH, train=True, download=False, transform=transform,
     )
-    return loader
-
-
-def build_val_loader():
-    val_set = dset.CIFAR10(DATASETS_PATH, train=True, download=False, transform=transform)
-    loader = DataLoader(
-        val_set, batch_size=BATCH_SIZE,
-        sampler=sampler.SubsetRandomSampler(range(NUM_TRAIN, 50000)),
+    val_set = dset.CIFAR10(
+        DATASETS_PATH, train=True, download=False, transform=transform,
     )
-    return loader
-
-
-def build_test_loader():
-    test_set = dset.CIFAR10(DATASETS_PATH, train=False, download=False, transform=transform)
-    loader = DataLoader(test_set, batch_size=BATCH_SIZE)
-    return loader
+    test_set = dset.CIFAR10(
+        DATASETS_PATH, train=False, download=False, transform=transform,
+    )
+    return train_set, val_set, test_set

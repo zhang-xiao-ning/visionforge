@@ -13,7 +13,7 @@ from training.evaluator import evaluate
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
 from utils.logger import get_logger, CSVRecorder
 
-import data.cifar10 as cifar10
+from data.datasets import build_loaders
 
 
 EXPERIMENTS = {
@@ -23,30 +23,16 @@ EXPERIMENTS = {
 }
 
 
-def build_loaders():
-    loader_train = cifar10.build_train_loader()
-    loader_val = cifar10.build_val_loader()
-    loader_test = cifar10.build_test_loader()
-    return loader_train, loader_val, loader_test
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Train CIFAR-10 models.")
-    parser.add_argument(
-        "--experiment", type=str, default="mlp",
-        choices=list(EXPERIMENTS.keys()),
-        help="which experiment to run",
-    )
+    parser.add_argument("--experiment", type=str, default="mlp",
+                        choices=list(EXPERIMENTS.keys()))
+    parser.add_argument("--dataset", type=str, default="cifar10")
+    parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument(
-        "--learning-rate", type=float, default=None,
-        help="if not set, use the experiment default",
-    )
+    parser.add_argument("--learning-rate", type=float, default=None)
     parser.add_argument("--momentum", type=float, default=0.9)
-    parser.add_argument(
-        "--no-nesterov", action="store_true",
-        help="disable Nesterov momentum",
-    )
+    parser.add_argument("--no-nesterov", action="store_true")
     return parser.parse_args()
 
 
@@ -62,7 +48,7 @@ def build_config(args):
     )
 
 
-def run_experiment(cfg, loaders):
+def run_experiment(cfg, dataset_name, batch_size):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base = "%s_%s" % (cfg.experiment, timestamp)
 
@@ -73,6 +59,10 @@ def run_experiment(cfg, loaders):
     logger = get_logger(cfg.experiment, log_path)
     recorder = CSVRecorder(csv_path)
 
+    loader_train, loader_val, loader_test = build_loaders(
+        name=dataset_name, batch_size=batch_size,
+    )
+
     model_cls, _ = EXPERIMENTS[cfg.experiment]
     model = model_cls()
     optimizer = optim.SGD(
@@ -82,10 +72,9 @@ def run_experiment(cfg, loaders):
         nesterov=cfg.nesterov,
     )
 
-    loader_train, loader_val, loader_test = loaders
-
     logger.info("=" * 60)
     logger.info("Experiment: %s", cfg.experiment)
+    logger.info("Dataset: %s", dataset_name)
     logger.info("Config: %s", cfg)
     logger.info("=" * 60)
 
@@ -97,15 +86,12 @@ def run_experiment(cfg, loaders):
 
     torch.save(model.state_dict(), ckpt_path)
     logger.info("Saved to %s", ckpt_path)
-    logger.info("Log: %s", log_path)
-    logger.info("CSV: %s", csv_path)
 
 
 def main():
     args = parse_args()
     cfg = build_config(args)
-    loaders = build_loaders()
-    run_experiment(cfg, loaders)
+    run_experiment(cfg, dataset_name=args.dataset, batch_size=args.batch_size)
 
 
 if __name__ == "__main__":
