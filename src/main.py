@@ -11,6 +11,7 @@ from config import TrainConfig, device
 from models.mlp import MLP
 from models.shallow_convnet import ShallowConvNet
 from models.deep_convnet import DeepConvNet
+from models.vit import ViT
 from training.train import train
 from training.evaluator import evaluate
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
@@ -25,6 +26,7 @@ EXPERIMENTS = {
     "mlp": (MLP, 1e-2),
     "shallow_convnet": (ShallowConvNet, 1e-2),
     "deep_convnet": (DeepConvNet, 0.1),
+    "vit": (ViT, 3e-4),
 }
 
 
