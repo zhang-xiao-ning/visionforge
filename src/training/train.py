@@ -5,16 +5,22 @@ from config import device, dtype, print_every
 from training.evaluator import evaluate
 
 
-def train(model, optimizer, loader_train, loader_val, epochs=1):
-    """
-    训练 model 并在每个 epoch 结束时评估。
-    返回最优验证准确率。
-    """
+def train(model, optimizer, loader_train, loader_val, epochs=1,
+    logger=None, recorder=None):
     model = model.to(device=device)
     best_acc = 0.0
     best_state = None
 
+    def log(msg):
+        if logger is not None:
+            logger.info(msg)
+        else:
+            print(msg)
+
     for e in range(1, epochs + 1):
+        running_loss = 0.0
+        n_batches = 0
+
         for t, (x, y) in enumerate(loader_train):
             model.train()
             x = x.to(device=device, dtype=dtype)
@@ -27,21 +33,28 @@ def train(model, optimizer, loader_train, loader_val, epochs=1):
             loss.backward()
             optimizer.step()
 
-            if t % print_every == 0:
-                print("Epoch %d, Iter %d, loss = %.4f" % (e, t, loss.item()))
+            running_loss += loss.item()
+            n_batches += 1
 
-        # 每个 epoch 结束，评估一次
+            if t % print_every == 0:
+                log("Epoch %d, Iter %d, loss = %.4f" % (e, t, loss.item()))
+
+        avg_loss = running_loss / n_batches
         val_acc = evaluate(model, loader_val)
-        print("Epoch %d done. Val accuracy = %.4f" % (e, val_acc))
+
+        log("Epoch %d done. avg_train_loss = %.4f, val_acc = %.4f"
+            % (e, avg_loss, val_acc))
+
+        if recorder is not None:
+            recorder.log(e, avg_loss, val_acc)
 
         if val_acc > best_acc:
             best_acc = val_acc
-            # 深拷贝一份当前权重
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            best_state = {k: v.detach().cpu().clone()
+                          for k, v in model.state_dict().items()}
 
-    # 恢复最优权重
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    print("Best val accuracy = %.4f" % best_acc)
+    log("Best val accuracy = %.4f" % best_acc)
     return best_acc

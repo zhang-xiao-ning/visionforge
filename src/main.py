@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 
 import torch
 import torch.optim as optim
@@ -9,12 +10,12 @@ from models.shallow_convnet import ShallowConvNet
 from models.deep_convnet import DeepConvNet
 from training.train import train
 from training.evaluator import evaluate
-from utils.path import CHECKPOINTS_PATH
+from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
+from utils.logger import get_logger, CSVRecorder
 
 import data.cifar10 as cifar10
 
 
-# 实验名 -> (模型类, 默认学习率)
 EXPERIMENTS = {
     "mlp": (MLP, 1e-2),
     "shallow_convnet": (ShallowConvNet, 1e-2),
@@ -62,6 +63,16 @@ def build_config(args):
 
 
 def run_experiment(cfg, loaders):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = "%s_%s" % (cfg.experiment, timestamp)
+
+    log_path = OUTPUTS_PATH / ("%s.log" % base)
+    csv_path = OUTPUTS_PATH / ("%s.csv" % base)
+    ckpt_path = CHECKPOINTS_PATH / ("%s.pt" % base)
+
+    logger = get_logger(cfg.experiment, log_path)
+    recorder = CSVRecorder(csv_path)
+
     model_cls, _ = EXPERIMENTS[cfg.experiment]
     model = model_cls()
     optimizer = optim.SGD(
@@ -73,19 +84,21 @@ def run_experiment(cfg, loaders):
 
     loader_train, loader_val, loader_test = loaders
 
-    print("=" * 60)
-    print("Experiment:", cfg.experiment)
-    print("Config:", cfg)
-    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Experiment: %s", cfg.experiment)
+    logger.info("Config: %s", cfg)
+    logger.info("=" * 60)
 
-    train(model, optimizer, loader_train, loader_val, epochs=cfg.epochs)
+    train(model, optimizer, loader_train, loader_val,
+          epochs=cfg.epochs, logger=logger, recorder=recorder)
 
     test_acc = evaluate(model, loader_test)
-    print("Test accuracy = %.4f" % test_acc)
+    logger.info("Test accuracy = %.4f" % test_acc)
 
-    save_path = CHECKPOINTS_PATH / ("%s.pt" % cfg.experiment)
-    torch.save(model.state_dict(), save_path)
-    print("Saved to", save_path)
+    torch.save(model.state_dict(), ckpt_path)
+    logger.info("Saved to %s", ckpt_path)
+    logger.info("Log: %s", log_path)
+    logger.info("CSV: %s", csv_path)
 
 
 def main():
