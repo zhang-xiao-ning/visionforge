@@ -14,7 +14,7 @@ def train(model, optimizer, loader_train, loader_val, epochs=1):
     best_acc = 0.0
     best_state = None
 
-    for e in range(epochs):
+    for e in range(1, epochs + 1):
         for t, (x, y) in enumerate(loader_train):
             model.train()
             x = x.to(device=device, dtype=dtype)

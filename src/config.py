@@ -1,4 +1,6 @@
 # 路径 device hyper-parameter
+from dataclasses import dataclass
+
 import torch
 
 USE_GPU = False
@@ -17,4 +19,13 @@ print('using device:', device)
 print_every = 100
 NUM_TRAIN = 49000
 BATCH_SIZE = 64
+
+@dataclass
+class TrainConfig:
+    """一次训练实验的配置。"""
+    experiment: str = "mlp"
+    epochs: int = 1
+    learning_rate: float = 1e-2
+    momentum: float = 0.9
+    nesterov: bool = True
 
