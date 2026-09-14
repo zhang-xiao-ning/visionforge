@@ -28,4 +28,5 @@ class TrainConfig:
     learning_rate: float = 1e-2
     momentum: float = 0.9
     nesterov: bool = True
+    seed: int = 42
 
