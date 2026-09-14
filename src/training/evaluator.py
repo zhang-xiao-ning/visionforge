@@ -3,15 +3,12 @@ import torch
 from config import device, dtype
 
 
-def check_accuracy_part34(loader, model):
-    if loader.dataset.train:
-        print("Checking accuracy on validation set")
-    else:
-        print("Checking accuracy on test set")
-
+def evaluate(model, loader):
+    """返回 accuracy (float, 0~1)。"""
+    model.eval()
     num_correct = 0
     num_samples = 0
-    model.eval()
+
     with torch.no_grad():
         for x, y in loader:
             x = x.to(device=device, dtype=dtype)
@@ -21,5 +18,5 @@ def check_accuracy_part34(loader, model):
             num_correct += (preds == y).sum().item()
             num_samples += preds.size(0)
 
-    acc = float(num_correct) / num_samples
-    print("Got %d / %d correct (%.2f)" % (num_correct, num_samples, 100 * acc))
+    model.train()
+    return num_correct / num_samples
