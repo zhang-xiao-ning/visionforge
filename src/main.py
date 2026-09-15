@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 from config import TrainConfig, device
 from models.mlp import MLP
@@ -101,6 +102,8 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
 
     logger = get_logger(cfg.experiment, log_path)
     recorder = CSVRecorder(csv_path, append=csv_append)
+    tb_dir = OUTPUTS_PATH / base
+    writer = SummaryWriter(log_dir=str(tb_dir))
 
     snapshot = {
         "config": dataclasses.asdict(cfg),
@@ -157,6 +160,7 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
         logger=logger,
         recorder=recorder,
         use_amp=cfg.amp,
+        writer=writer,
     )
 
     test_acc = evaluate(model, loader_test)
@@ -171,6 +175,7 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
         "config": dataclasses.asdict(cfg),
     }, ckpt_path)
     logger.info("Saved to %s", ckpt_path)
+    writer.close()
 
 
 def main():

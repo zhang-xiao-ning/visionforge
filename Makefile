@@ -2,7 +2,7 @@
 # My Test Project
 # ============================================================
 
-.PHONY: help install test lint format train clean
+.PHONY: help install test lint format train board clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -20,6 +20,7 @@ help:
 	@echo "  make train                uv run train"
 	@echo "      EXP=mlp EPOCHS=5 BS=128 LR=0.01 RESUME=path/to.pt"
 	@echo "  make clean                Remove caches"
+	@echo "  make board                Launch TensorBoard on outputs/"
 
 install:
 	uv sync
@@ -50,3 +51,6 @@ clean:
 	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
 	rm -rf build/ dist/ *.egg-info/
+
+board:
+	uv run tensorboard --logdir outputs/
