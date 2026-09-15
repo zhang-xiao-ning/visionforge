@@ -1,0 +1,51 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.venv/
+venv/
+env/
+
+# ---------- Tooling ----------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+*.swp
+
+# ---------- Data & outputs ----------
+datasets/
+checkpoints/
+outputs/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Local config ----------
+.env
+.env.*
+
+# ---------- TensorBoard ----------
+runs/
+events.out.tfevents.*
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+*.ipynb_checkpoints

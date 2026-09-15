@@ -1,7 +1,13 @@
 [project]
 name = "my-test-project"
 version = "0.1.0"
-requires-python = "==3.12.*"
+description = "CIFAR-10 image classification with PyTorch"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Xiaoning Zhang", email = "xiaoning.zhang@outlook.com" },
+]
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "torch==2.2.2",
     "torchvision==0.17.2",
@@ -10,4 +16,50 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
 ]
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ---------- pytest ----------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra"
+
+# ---------- ruff ----------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long, 由 line-length 统一控制
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "data", "models", "training", "utils"]
+
+# ---------- mypy ----------
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
