@@ -10,8 +10,10 @@ class PatchEmbedding(nn.Module):
         assert img_size % patch_size == 0, "img_size 必须能被 patch_size 整除"
         self.num_patches = (img_size // patch_size) ** 2
         self.proj = nn.Conv2d(
-            in_channels, embed_dim,
-            kernel_size=patch_size, stride=patch_size,
+            in_channels,
+            embed_dim,
+            kernel_size=patch_size,
+            stride=patch_size,
         )
 
     def forward(self, x):
@@ -37,8 +39,10 @@ class ViT(nn.Module):
         super().__init__()
 
         self.patch_embed = PatchEmbedding(
-            img_size=img_size, patch_size=patch_size,
-            in_channels=in_channels, embed_dim=embed_dim,
+            img_size=img_size,
+            patch_size=patch_size,
+            in_channels=in_channels,
+            embed_dim=embed_dim,
         )
         num_patches = self.patch_embed.num_patches
 
@@ -71,13 +75,13 @@ class ViT(nn.Module):
 
     def forward(self, x):
         B = x.size(0)
-        x = self.patch_embed(x)                       # (B, N, D)
-        cls = self.cls_token.expand(B, -1, -1)        # (B, 1, D)
-        x = torch.cat([cls, x], dim=1)                # (B, N+1, D)
+        x = self.patch_embed(x)  # (B, N, D)
+        cls = self.cls_token.expand(B, -1, -1)  # (B, 1, D)
+        x = torch.cat([cls, x], dim=1)  # (B, N+1, D)
         x = x + self.pos_embed
         x = self.pos_drop(x)
 
-        x = self.encoder(x)                           # (B, N+1, D)
+        x = self.encoder(x)  # (B, N+1, D)
         x = self.norm(x)
-        cls_out = x[:, 0]                             # 取 [CLS]
-        return self.head(cls_out)                     # (B, num_classes)
+        cls_out = x[:, 0]  # 取 [CLS]
+        return self.head(cls_out)  # (B, num_classes)

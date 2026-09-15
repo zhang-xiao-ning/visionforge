@@ -19,5 +19,5 @@ def format_env_info():
     info = get_env_info()
     lines = ["Environment:"]
     for k, v in info.items():
-        lines.append("  %s: %s" % (k, v))
+        lines.append(f"  {k}: {v}")
     return "\n".join(lines)

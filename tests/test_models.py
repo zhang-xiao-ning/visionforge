@@ -1,9 +1,8 @@
-import torch
 import torch.nn as nn
 
+from models.deep_convnet import DeepConvNet
 from models.mlp import MLP
 from models.shallow_convnet import ShallowConvNet
-from models.deep_convnet import DeepConvNet
 from models.vit import ViT
 
 

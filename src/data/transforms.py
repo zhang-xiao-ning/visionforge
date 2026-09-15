@@ -10,17 +10,21 @@ CIFAR10_STD = (0.2023, 0.1994, 0.2010)
 
 def cifar10_train_transform():
     """训练集：随机裁剪 + 随机翻转 + 归一化。"""
-    return T.Compose([
-        T.RandomCrop(32, padding=4),
-        T.RandomHorizontalFlip(),
-        T.ToTensor(),
-        T.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+    return T.Compose(
+        [
+            T.RandomCrop(32, padding=4),
+            T.RandomHorizontalFlip(),
+            T.ToTensor(),
+            T.Normalize(CIFAR10_MEAN, CIFAR10_STD),
+        ]
+    )
 
 
 def cifar10_test_transform():
     """验证/测试集：只做归一化，不做随机。"""
-    return T.Compose([
-        T.ToTensor(),
-        T.Normalize(CIFAR10_MEAN, CIFAR10_STD),
-    ])
+    return T.Compose(
+        [
+            T.ToTensor(),
+            T.Normalize(CIFAR10_MEAN, CIFAR10_STD),
+        ]
+    )

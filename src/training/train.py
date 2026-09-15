@@ -59,14 +59,13 @@ def train(
             n_batches += 1
 
             if t % print_every == 0:
-                log("Epoch %d, Iter %d, loss = %.4f" % (e, t, loss.item()))
+                log(f"Epoch {e}, Iter {t}, loss = {loss.item():.4f}")
 
         avg_loss = running_loss / n_batches
         val_acc = evaluate(model, loader_val)
         lr_now = optimizer.param_groups[0]["lr"]
 
-        log("Epoch %d done. avg_train_loss = %.4f, val_acc = %.4f"
-            % (e, avg_loss, val_acc))
+        log(f"Epoch {e} done. avg_train_loss = {avg_loss:.4f}, val_acc = {val_acc:.4f}")
 
         if recorder is not None:
             recorder.log(e, avg_loss, val_acc, lr_now)
@@ -79,21 +78,16 @@ def train(
 
         if scheduler is not None:
             scheduler.step()
-            log("  LR -> %.6g" % optimizer.param_groups[0]["lr"])
+            log("  LR -> {:.6g}".format(optimizer.param_groups[0]["lr"]))
 
         if val_acc > best_acc:
             best_acc = val_acc
-            best_state = {
-                k: v.detach().cpu().clone() for k, v in model.state_dict().items()
-            }
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             epochs_no_improve = 0
         else:
             epochs_no_improve += 1
             if early_stop_patience > 0 and epochs_no_improve >= early_stop_patience:
-                log(
-                    "Early stopping at epoch %d (no improve for %d epochs)"
-                    % (e, epochs_no_improve)
-                )
+                log(f"Early stopping at epoch {e} (no improve for {epochs_no_improve} epochs)")
                 last_epoch = e
                 break
 
@@ -102,5 +96,5 @@ def train(
     if best_state is not None:
         model.load_state_dict(best_state)
 
-    log("Best val accuracy = %.4f" % best_acc)
+    log(f"Best val accuracy = {best_acc:.4f}")
     return {"best_acc": best_acc, "last_epoch": last_epoch}

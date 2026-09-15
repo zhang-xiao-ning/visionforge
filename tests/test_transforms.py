@@ -11,9 +11,7 @@ from data.transforms import (
 
 
 def _make_image():
-    return Image.fromarray(
-        np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8)
-    )
+    return Image.fromarray(np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8))
 
 
 def test_train_transform_output():

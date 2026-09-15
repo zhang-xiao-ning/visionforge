@@ -9,19 +9,17 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from config import TrainConfig, device
+from data.datasets import build_loaders
+from models.deep_convnet import DeepConvNet
 from models.mlp import MLP
 from models.shallow_convnet import ShallowConvNet
-from models.deep_convnet import DeepConvNet
 from models.vit import ViT
-from training.train import train
 from training.evaluator import evaluate
+from training.train import train
+from utils.env import format_env_info, get_env_info
+from utils.logger import CSVRecorder, get_logger
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
-from utils.logger import get_logger, CSVRecorder
 from utils.seed import set_seed
-from utils.env import get_env_info, format_env_info
-
-from data.datasets import build_loaders
-
 
 EXPERIMENTS = {
     "mlp": (MLP, 1e-2),
@@ -42,12 +40,16 @@ def parse_args():
     parser.add_argument("--no-nesterov", action="store_true")
     parser.add_argument("--seed", type=int, default=42)
 
-    parser.add_argument("--lr-scheduler", type=str, default="none", choices=["none", "step", "cosine"])
+    parser.add_argument(
+        "--lr-scheduler", type=str, default="none", choices=["none", "step", "cosine"]
+    )
     parser.add_argument("--step-size", type=int, default=10)
     parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--early-stop-patience", type=int, default=0)
 
-    parser.add_argument("--resume", type=str, default=None, help="path to checkpoint to resume from")
+    parser.add_argument(
+        "--resume", type=str, default=None, help="path to checkpoint to resume from"
+    )
     parser.add_argument("--amp", action="store_true", help="enable mixed precision (CUDA only)")
 
     return parser.parse_args()
@@ -74,30 +76,33 @@ def build_config(args):
 def build_scheduler(optimizer, cfg):
     if cfg.lr_scheduler == "step":
         return optim.lr_scheduler.StepLR(
-            optimizer, step_size=cfg.step_size, gamma=cfg.gamma,
+            optimizer,
+            step_size=cfg.step_size,
+            gamma=cfg.gamma,
         )
     if cfg.lr_scheduler == "cosine":
         return optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=cfg.epochs,
+            optimizer,
+            T_max=cfg.epochs,
         )
     return None
 
 
 def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    base = "%s_%s" % (cfg.experiment, timestamp)
+    base = f"{cfg.experiment}_{timestamp}"
 
-    log_path = OUTPUTS_PATH / ("%s.log" % base)
-    ckpt_path = CHECKPOINTS_PATH / ("%s.pt" % base)
-    cfg_path = OUTPUTS_PATH / ("%s.json" % base)
+    log_path = OUTPUTS_PATH / (f"{base}.log")
+    ckpt_path = CHECKPOINTS_PATH / (f"{base}.pt")
+    cfg_path = OUTPUTS_PATH / (f"{base}.json")
 
     # CSV：resume 时复用旧的，否则新建
     if resume_path is not None:
         old_base = Path(resume_path).stem
-        csv_path = OUTPUTS_PATH / ("%s.csv" % old_base)
+        csv_path = OUTPUTS_PATH / (f"{old_base}.csv")
         csv_append = True
     else:
-        csv_path = OUTPUTS_PATH / ("%s.csv" % base)
+        csv_path = OUTPUTS_PATH / (f"{base}.csv")
         csv_append = False
 
     logger = get_logger(cfg.experiment, log_path)
@@ -116,7 +121,8 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
         json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
     loader_train, loader_val, loader_test = build_loaders(
-        name=dataset_name, batch_size=batch_size,
+        name=dataset_name,
+        batch_size=batch_size,
     )
 
     model_cls, _ = EXPERIMENTS[cfg.experiment]
@@ -151,7 +157,10 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
     logger.info("=" * 60)
 
     result = train(
-        model, optimizer, loader_train, loader_val,
+        model,
+        optimizer,
+        loader_train,
+        loader_val,
         epochs=cfg.epochs,
         scheduler=scheduler,
         early_stop_patience=cfg.early_stop_patience,
@@ -164,16 +173,19 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
     )
 
     test_acc = evaluate(model, loader_test)
-    logger.info("Test accuracy = %.4f" % test_acc)
+    logger.info(f"Test accuracy = {test_acc:.4f}")
 
-    torch.save({
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "scheduler": scheduler.state_dict() if scheduler is not None else None,
-        "epoch": result["last_epoch"],
-        "best_acc": result["best_acc"],
-        "config": dataclasses.asdict(cfg),
-    }, ckpt_path)
+    torch.save(
+        {
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict() if scheduler is not None else None,
+            "epoch": result["last_epoch"],
+            "best_acc": result["best_acc"],
+            "config": dataclasses.asdict(cfg),
+        },
+        ckpt_path,
+    )
     logger.info("Saved to %s", ckpt_path)
     writer.close()
 
@@ -182,10 +194,9 @@ def main():
     args = parse_args()
     cfg = build_config(args)
     set_seed(cfg.seed)
-    run_experiment(cfg,
-                   dataset_name=args.dataset,
-                   batch_size=args.batch_size,
-                   resume_path=args.resume)
+    run_experiment(
+        cfg, dataset_name=args.dataset, batch_size=args.batch_size, resume_path=args.resume
+    )
 
 
 if __name__ == "__main__":

@@ -40,9 +40,11 @@ class CSVRecorder:
     def log(self, epoch, train_loss, val_acc, lr=None):
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                epoch,
-                "%.6f" % train_loss,
-                "%.6f" % val_acc,
-                "%.6g" % lr if lr is not None else "",
-            ])
+            writer.writerow(
+                [
+                    epoch,
+                    f"{train_loss:.6f}",
+                    f"{val_acc:.6f}",
+                    f"{lr:.6g}" if lr is not None else "",
+                ]
+            )
