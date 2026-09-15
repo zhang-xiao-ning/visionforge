@@ -21,6 +21,8 @@
 
 - [ ] 类型注解补齐（`mypy src/` 无报错）
 - [ ] README 完善（架构图、实验对比表）
+- [ ] 版本号单一来源（`importlib.metadata`）
+- [ ] `setuptools-scm` 从 git tag 自动生成版本（可选，更进阶）
 
 ## 可选
 
