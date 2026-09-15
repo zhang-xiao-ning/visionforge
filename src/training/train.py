@@ -8,14 +8,16 @@ from training.evaluator import evaluate
 def train(model, optimizer, loader_train, loader_val,
           epochs=1, scheduler=None, early_stop_patience=0,
           start_epoch=1, best_acc=0.0,
-          logger=None, recorder=None):
-    """
-    训练 model，返回 {"best_acc": float, "last_epoch": int}。
-    """
+          logger=None, recorder=None,
+          use_amp=False):
     model = model.to(device=device)
     best_state = None
     epochs_no_improve = 0
     last_epoch = start_epoch - 1
+
+    # AMP 只在 CUDA 上真正生效，MPS / CPU 上自动退化为 float32
+    amp_enabled = use_amp and device.type == "cuda"
+    scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
     def log(msg):
         if logger is not None:
@@ -32,12 +34,15 @@ def train(model, optimizer, loader_train, loader_val,
             x = x.to(device=device, dtype=dtype)
             y = y.to(device=device, dtype=torch.long)
 
-            scores = model(x)
-            loss = F.cross_entropy(scores, y)
-
             optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+
+            with torch.cuda.amp.autocast(enabled=amp_enabled):
+                scores = model(x)
+                loss = F.cross_entropy(scores, y)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
             running_loss += loss.item()
             n_batches += 1
@@ -55,12 +60,10 @@ def train(model, optimizer, loader_train, loader_val,
         if recorder is not None:
             recorder.log(e, avg_loss, val_acc, lr_now)
 
-        # 学习率调度
         if scheduler is not None:
             scheduler.step()
             log("  LR -> %.6g" % optimizer.param_groups[0]["lr"])
 
-        # Early stopping
         if val_acc > best_acc:
             best_acc = val_acc
             best_state = {k: v.detach().cpu().clone()

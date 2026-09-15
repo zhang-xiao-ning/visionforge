@@ -47,6 +47,8 @@ def parse_args():
     parser.add_argument("--early-stop-patience", type=int, default=0)
 
     parser.add_argument("--resume", type=str, default=None, help="path to checkpoint to resume from")
+    parser.add_argument("--amp", action="store_true", help="enable mixed precision (CUDA only)")
+
     return parser.parse_args()
 
 
@@ -64,6 +66,7 @@ def build_config(args):
         step_size=args.step_size,
         gamma=args.gamma,
         early_stop_patience=args.early_stop_patience,
+        amp=args.amp,
     )
 
 
@@ -151,7 +154,9 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
         early_stop_patience=cfg.early_stop_patience,
         start_epoch=start_epoch,
         best_acc=best_acc,
-        logger=logger, recorder=recorder,
+        logger=logger,
+        recorder=recorder,
+        use_amp=cfg.amp,
     )
 
     test_acc = evaluate(model, loader_test)

@@ -27,9 +27,8 @@ class TrainConfig:
     momentum: float = 0.9
     nesterov: bool = True
     seed: int = 42
-
-    # 新增
     lr_scheduler: str = "none"          # none / step / cosine
     step_size: int = 10                 # StepLR 用
     gamma: float = 0.1                  # StepLR 用
     early_stop_patience: int = 0        # 0 表示不启用
+    amp: bool = False

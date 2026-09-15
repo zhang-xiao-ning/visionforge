@@ -9,6 +9,7 @@ EPOCHS  ?= 1
 BS      ?= 64
 LR      ?=
 RESUME  ?=
+AMP ?=
 
 help:
 	@echo "Available targets:"
@@ -40,7 +41,7 @@ train:
 		--experiment $(EXP) \
 		--epochs $(EPOCHS) \
 		--batch-size $(BS) \
-		$(if $(LR),--learning-rate $(LR) ,)$(if $(RESUME),--resume $(RESUME),)
+		$(if $(LR),--learning-rate $(LR) ,)$(if $(RESUME),--resume $(RESUME),)$(if $(AMP),--amp,)
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
