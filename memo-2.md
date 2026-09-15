@@ -292,15 +292,15 @@ checkpoints/<exp>_<timestamp>.pt  # model + optimizer + scheduler + epoch + best
 
 ### 第 11 步：项目外观
 
-**目标**：`pyproject.toml` + `README.md` + `.gitignore`
+**目标**：`../pyproject.toml` + `../README.md` + `../.gitignore`
 
 **知识点**：
-- `pyproject.toml`：依赖 + 工具配置 + 构建配置
+- `../pyproject.toml`：依赖 + 工具配置 + 构建配置
 - **`[dependency-groups]`**（PEP 735，uv 推荐）vs `[project.optional-dependencies]`（pip 传统）
-- `.gitignore` 只对未追踪文件生效，已追踪的要 `git rm --cached`
+- `../.gitignore` 只对未追踪文件生效，已追踪的要 `git rm --cached`
 - **Python 版本必须全对齐**：`requires-python` / `ruff target-version` / `mypy python_version` / CI / Docker
-- `uv.lock` **要提交**（应用项目）
-- `.idea/` / `__pycache__/` / `*.egg-info/` 要排除
+- `../uv.lock` **要提交**（应用项目）
+- `../.idea` / `__pycache__/` / `*.egg-info/` 要排除
 
 **教训**：
 - **uv 项目不要用 pip**，`uv sync` 一步到位
@@ -330,7 +330,7 @@ checkpoints/<exp>_<timestamp>.pt  # model + optimizer + scheduler + epoch + best
 **知识点**：
 - `src/__init__.py` 定义 `__all__` 和 `__version__`
 - `py.typed` 空文件，告诉 mypy 有类型
-- 版本号与 `pyproject.toml` 对齐
+- 版本号与 `../pyproject.toml` 对齐
 
 **教训**：**公开 API 是包的契约**。改 `__all__` = 改契约。
 

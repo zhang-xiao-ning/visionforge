@@ -55,7 +55,7 @@
 
 ### 第 18 步：pre-commit
 
-- `.pre-commit-config.yaml` 使用 **local 模式**
+- `../.pre-commit-config.yaml` 使用 **local 模式**
 - `uv run ruff check` / `ruff format` / `mypy` 作为 hook
 - 每次 `git commit` 自动跑
 - 不合规范的代码**进不了 git**
@@ -72,7 +72,7 @@
 
 - **pre-commit 隔离环境的代价：每个 hook 重新下依赖**
 - 国内最好用 local 模式
-- 用 `uv run` 复用项目环境，版本由 `uv.lock` 统一控制
+- 用 `uv run` 复用项目环境，版本由 `../uv.lock` 统一控制
 
 **验证**：
 
@@ -364,11 +364,11 @@ pre-commit 自动跑 ruff + mypy
 
 **解决**：同上，本地模式。
 
-### 坑 3：`.idea/` 一直在 `git status` 里
+### 坑 3：`../.idea` 一直在 `git status` 里
 
-**症状**：即使 `.gitignore` 写了 `.idea/`，`git status` 还显示 `.idea/` 的改动。
+**症状**：即使 `../.gitignore` 写了 `../.idea`，`git status` 还显示 `../.idea` 的改动。
 
-**原因**：`.gitignore` 只对"未追踪"文件生效，`.idea/` 已被追踪。
+**原因**：`../.gitignore` 只对"未追踪"文件生效，`../.idea` 已被追踪。
 
 **解决**：
 
