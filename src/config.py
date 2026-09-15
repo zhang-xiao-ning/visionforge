@@ -1,8 +1,9 @@
+import os
 from dataclasses import dataclass
 
 import torch
 
-USE_GPU = True
+USE_GPU = os.environ.get("USE_GPU", "true").lower() == "true"
 dtype = torch.float32
 
 if USE_GPU and torch.cuda.is_available():
