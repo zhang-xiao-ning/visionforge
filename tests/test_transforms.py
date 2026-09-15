@@ -1,19 +1,34 @@
+import numpy as np
 import torch
+from PIL import Image
 
-from data.transforms import cifar10_transform, CIFAR10_MEAN, CIFAR10_STD
+from data.transforms import (
+    CIFAR10_MEAN,
+    CIFAR10_STD,
+    cifar10_test_transform,
+    cifar10_train_transform,
+)
 
 
-def test_cifar10_transform_output():
-    from PIL import Image
-    import numpy as np
-
-    # 造一张 32x32 RGB 图
-    img = Image.fromarray(
+def _make_image():
+    return Image.fromarray(
         np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8)
     )
-    t = cifar10_transform()
-    out = t(img)
 
+
+def test_train_transform_output():
+    img = _make_image()
+    t = cifar10_train_transform()
+    out = t(img)
+    assert isinstance(out, torch.Tensor)
+    assert out.shape == (3, 32, 32)
+    assert out.dtype == torch.float32
+
+
+def test_test_transform_output():
+    img = _make_image()
+    t = cifar10_test_transform()
+    out = t(img)
     assert isinstance(out, torch.Tensor)
     assert out.shape == (3, 32, 32)
     assert out.dtype == torch.float32

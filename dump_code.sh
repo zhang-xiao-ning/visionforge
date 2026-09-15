@@ -11,6 +11,8 @@ find . -type f \( \
     -name "*.txt" -o \
     -name "*.toml" -o \
     -name "*.yaml" -o \
+    -name ".gitignore" -o \
+    -name "*.typed" -o \
     -name "*.yml" \
   \) \
   -not -path "./.venv/*" \
@@ -20,6 +22,8 @@ find . -type f \( \
   -not -path "*/__pycache__/*" \
   -not -path "./outputs/*" \
   -not -path "./checkpoints/*" \
+  -not -path "./*.egg-info/*" \
+  -not -path "*.egg-info/*" \
   -not -path "./all_code.txt" \
   | sort | while read -r f; do
     echo "===== $f =====" >> "$OUTPUT"
