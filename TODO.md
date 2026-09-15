@@ -1,10 +1,5 @@
 # TODO
 
-## 进行中
-
-- [ ] TensorBoard 集成
-- [ ] ruff + mypy + pre-commit 代码质量清理
-
 ## DevOps 阶段（后做）
 
 - [ ] Docker

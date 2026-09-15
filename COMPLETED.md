@@ -43,7 +43,15 @@
   - `torch.cuda.amp.autocast` + `GradScaler`
   - 只在 CUDA 上生效，MPS / CPU 自动退化
   - `--amp` 命令行开关
-
+- [x] **第 17 步**：ruff 代码风格清理
+  - 删除坏文件 `src/utils/init.py`
+  - import 排序、`%` → f-string、格式化
+  - `ruff check` 全过
+- [x] **第 18 步**：pre-commit 本地 hook
+  - `.pre-commit-config.yaml` 用 local 模式（不联网）
+  - ruff + ruff-format + mypy
+- [x] **第 19 步**：`make install-hooks`
+  - 新人 clone 后一句命令装 hook
 ---
 
 ## 项目结构
