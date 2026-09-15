@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 import torch.optim as optim
+from torch.optim import lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
 
 from config import TrainConfig, device
@@ -29,7 +30,7 @@ EXPERIMENTS = {
 }
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train CIFAR-10 models.")
     parser.add_argument("--experiment", type=str, default="mlp", choices=list(EXPERIMENTS.keys()))
     parser.add_argument("--dataset", type=str, default="cifar10")
@@ -55,7 +56,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def build_config(args):
+def build_config(args: argparse.Namespace) -> TrainConfig:
     _, default_lr = EXPERIMENTS[args.experiment]
     lr = args.learning_rate if args.learning_rate is not None else default_lr
     return TrainConfig(
@@ -73,7 +74,9 @@ def build_config(args):
     )
 
 
-def build_scheduler(optimizer, cfg):
+def build_scheduler(
+    optimizer: optim.Optimizer, cfg: TrainConfig
+) -> lr_scheduler.LRScheduler | None:
     if cfg.lr_scheduler == "step":
         return optim.lr_scheduler.StepLR(
             optimizer,
@@ -88,7 +91,9 @@ def build_scheduler(optimizer, cfg):
     return None
 
 
-def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
+def run_experiment(
+    cfg: TrainConfig, dataset_name: str, batch_size: int, resume_path: str | None = None
+) -> None:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     base = f"{cfg.experiment}_{timestamp}"
 
@@ -190,7 +195,7 @@ def run_experiment(cfg, dataset_name, batch_size, resume_path=None):
     writer.close()
 
 
-def main():
+def main() -> None:
     args = parse_args()
     cfg = build_config(args)
     set_seed(cfg.seed)

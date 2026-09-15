@@ -8,7 +8,9 @@ DATASET_REGISTRY = {
 }
 
 
-def build_loaders(name="cifar10", batch_size=BATCH_SIZE, num_train=NUM_TRAIN):
+def build_loaders(
+    name: str = "cifar10", batch_size: int = BATCH_SIZE, num_train: int = NUM_TRAIN
+) -> tuple[DataLoader, DataLoader, DataLoader]:
     if name not in DATASET_REGISTRY:
         raise ValueError(f"Unknown dataset: {name}")
 

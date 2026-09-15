@@ -8,7 +8,7 @@ CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2023, 0.1994, 0.2010)
 
 
-def cifar10_train_transform():
+def cifar10_train_transform() -> T.Compose:
     """训练集：随机裁剪 + 随机翻转 + 归一化。"""
     return T.Compose(
         [
@@ -20,7 +20,7 @@ def cifar10_train_transform():
     )
 
 
-def cifar10_test_transform():
+def cifar10_test_transform() -> T.Compose:
     """验证/测试集：只做归一化，不做随机。"""
     return T.Compose(
         [

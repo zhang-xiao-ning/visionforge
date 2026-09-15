@@ -1,8 +1,9 @@
+import torch
 import torch.nn as nn
 
 
 class DeepConvNet(nn.Module):
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes: int = 10) -> None:
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 16, 3, stride=1, padding=1),
@@ -30,7 +31,7 @@ class DeepConvNet(nn.Module):
             nn.Linear(256, num_classes),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         x = self.classifier(x)
         return x

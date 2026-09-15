@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 
 
-def get_logger(name, log_file):
+def get_logger(name: str, log_file: Path) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
@@ -26,7 +26,7 @@ def get_logger(name, log_file):
 
 
 class CSVRecorder:
-    def __init__(self, csv_path, append=False):
+    def __init__(self, csv_path: Path, append: bool = False) -> None:
         self.csv_path = Path(csv_path)
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -37,7 +37,7 @@ class CSVRecorder:
             writer = csv.writer(f)
             writer.writerow(["epoch", "train_loss", "val_acc", "lr"])
 
-    def log(self, epoch, train_loss, val_acc, lr=None):
+    def log(self, epoch: int, train_loss: float, val_acc: float, lr: float | None = None) -> None:
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(

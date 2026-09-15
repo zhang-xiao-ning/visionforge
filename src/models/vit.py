@@ -5,7 +5,9 @@ import torch.nn as nn
 class PatchEmbedding(nn.Module):
     """把 (B, 3, 32, 32) 切成 patch 并线性投影到 embed_dim。"""
 
-    def __init__(self, img_size=32, patch_size=4, in_channels=3, embed_dim=192):
+    def __init__(
+        self, img_size: int = 32, patch_size: int = 4, in_channels: int = 3, embed_dim: int = 192
+    ) -> None:
         super().__init__()
         assert img_size % patch_size == 0, "img_size 必须能被 patch_size 整除"
         self.num_patches = (img_size // patch_size) ** 2
@@ -16,7 +18,7 @@ class PatchEmbedding(nn.Module):
             stride=patch_size,
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (B, 3, 32, 32) -> (B, embed_dim, 8, 8) -> (B, 64, embed_dim)
         x = self.proj(x)
         x = x.flatten(2).transpose(1, 2)
@@ -26,16 +28,16 @@ class PatchEmbedding(nn.Module):
 class ViT(nn.Module):
     def __init__(
         self,
-        img_size=32,
-        patch_size=4,
-        in_channels=3,
-        num_classes=10,
-        embed_dim=192,
-        depth=6,
-        num_heads=6,
-        mlp_ratio=4.0,
-        dropout=0.1,
-    ):
+        img_size: int = 32,
+        patch_size: int = 4,
+        in_channels: int = 3,
+        num_classes: int = 10,
+        embed_dim: int = 192,
+        depth: int = 6,
+        num_heads: int = 6,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.1,
+    ) -> None:
         super().__init__()
 
         self.patch_embed = PatchEmbedding(
@@ -60,20 +62,24 @@ class ViT(nn.Module):
             batch_first=True,
             norm_first=True,
         )
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=depth)
+        self.encoder = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=depth,
+            enable_nested_tensor=False,
+        )
 
         self.norm = nn.LayerNorm(embed_dim)
         self.head = nn.Linear(embed_dim, num_classes)
 
         self._init_weights()
 
-    def _init_weights(self):
+    def _init_weights(self) -> None:
         nn.init.trunc_normal_(self.cls_token, std=0.02)
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
         nn.init.trunc_normal_(self.head.weight, std=0.02)
         nn.init.zeros_(self.head.bias)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         B = x.size(0)
         x = self.patch_embed(x)  # (B, N, D)
         cls = self.cls_token.expand(B, -1, -1)  # (B, 1, D)

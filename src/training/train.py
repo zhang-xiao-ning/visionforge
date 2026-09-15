@@ -1,26 +1,33 @@
+import logging
+
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+from torch.optim import lr_scheduler
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from config import device, dtype, print_every
 from training.evaluator import evaluate
+from utils.logger import CSVRecorder
 
 
 def train(
-    model,
-    optimizer,
-    loader_train,
-    loader_val,
-    epochs=1,
-    scheduler=None,
-    early_stop_patience=0,
-    start_epoch=1,
-    best_acc=0.0,
-    logger=None,
-    recorder=None,
-    use_amp=False,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    loader_train: DataLoader,
+    loader_val: DataLoader,
+    epochs: int = 1,
+    scheduler: lr_scheduler.LRScheduler | None = None,
+    early_stop_patience: int = 0,
+    start_epoch: int = 1,
+    best_acc: float = 0.0,
+    logger: logging.Logger | None = None,
+    recorder: CSVRecorder | None = None,
+    use_amp: bool = False,
     writer: SummaryWriter | None = None,
-):
+) -> dict[str, float | int]:
     model = model.to(device=device)
     best_state = None
     epochs_no_improve = 0
@@ -30,7 +37,7 @@ def train(
     amp_enabled = use_amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
-    def log(msg):
+    def log(msg: str) -> None:
         if logger is not None:
             logger.info(msg)
         else:

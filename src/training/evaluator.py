@@ -1,9 +1,11 @@
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
 from config import device, dtype
 
 
-def evaluate(model, loader):
+def evaluate(model: nn.Module, loader: DataLoader) -> float:
     """返回 accuracy (float, 0~1)。"""
     model.eval()
     num_correct = 0

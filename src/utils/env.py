@@ -5,7 +5,7 @@ import torch
 import torchvision
 
 
-def get_env_info():
+def get_env_info() -> dict[str, str | bool]:
     return {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
@@ -15,7 +15,7 @@ def get_env_info():
     }
 
 
-def format_env_info():
+def format_env_info() -> str:
     info = get_env_info()
     lines = ["Environment:"]
     for k, v in info.items():

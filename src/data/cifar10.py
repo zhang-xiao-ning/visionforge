@@ -1,10 +1,11 @@
 import torchvision.datasets as dset
+from torch.utils.data import Dataset
 
 from data.transforms import cifar10_test_transform, cifar10_train_transform
 from utils.path import DATASETS_PATH
 
 
-def build_datasets():
+def build_datasets() -> tuple[Dataset, Dataset, Dataset]:
     """返回 (train_set, val_set, test_set)。"""
     train_transform = cifar10_train_transform()
     test_transform = cifar10_test_transform()
