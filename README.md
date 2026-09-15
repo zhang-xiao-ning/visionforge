@@ -10,9 +10,16 @@ resumable training, and reproducible experiments.
 - PyTorch 2.2
 - (optional) CUDA 12.1 for GPU
 
+## Using as a Library
+
+```python
+from my_test_project import MLP, ViT
+model = ViT()
+
 ## Installation
 
 ```bash
 git clone <repo-url>
 cd my_test_project
 pip install -e ".[dev]"
+
