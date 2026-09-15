@@ -162,7 +162,7 @@ def set_seed(seed=42):
 **企业里更进一步的：**
 
 - Docker 固定环境
-- `requirements.txt` / `pyproject.toml` 锁版本
+- `requirements.txt` / `../pyproject.toml` 锁版本
 - DVC / MLflow 管理数据和实验
 
 ---
@@ -372,8 +372,8 @@ datasets/       数据（不进 git）
 
 **企业里更进一步的：**
 
-- `src/` layout（避免 import 冲突）
-- `pyproject.toml` 统一配置
+- `../src` layout（避免 import 冲突）
+- `../pyproject.toml` 统一配置
 - `Makefile` / `scripts/` 常用命令
 
 ---
@@ -384,9 +384,9 @@ datasets/       数据（不进 git）
 
 | 项目 | 作用 | 什么时候加 |
 |---|---|---|
-| `pyproject.toml` 完整配置 | 依赖、工具配置 | 现在就有，可以完善 |
-| `README.md` | 别人怎么跑 | 立刻 |
-| `.gitignore` | 不提交 datasets/ 等 | 立刻 |
+| `../pyproject.toml` 完整配置 | 依赖、工具配置 | 现在就有，可以完善 |
+| `../README.md` | 别人怎么跑 | 立刻 |
+| `../.gitignore` | 不提交 datasets/ 等 | 立刻 |
 | GitHub Actions | 自动跑测试 | 有 GitHub 仓库时 |
 | Dockerfile | 环境隔离 | 部署时 |
 | 混合精度（AMP） | GPU 加速 2x | 有 GPU 时 |
@@ -437,9 +437,9 @@ datasets/       数据（不进 git）
 
 按优先级：
 
-1. **`pyproject.toml` 完整配置** — 依赖管理、工具配置
-2. **`README.md`** — 项目说明书
-3. **`.gitignore`** — 什么不该进 Git
+1. **`../pyproject.toml` 完整配置** — 依赖管理、工具配置
+2. **`../README.md`** — 项目说明书
+3. **`../.gitignore`** — 什么不该进 Git
 4. **GitHub Actions** — 自动跑 pytest
 5. **数据增强** — `torchvision.transforms`
 6. **混合精度（AMP）** — GPU 上 2x 加速
@@ -618,7 +618,7 @@ def set_seed(seed=42):
 **企业里更进一步的：**
 
 - Docker 固定环境
-- `requirements.txt` / `pyproject.toml` 锁版本
+- `requirements.txt` / `../pyproject.toml` 锁版本
 - DVC / MLflow 管理数据和实验
 
 ---
@@ -828,8 +828,8 @@ datasets/       数据（不进 git）
 
 **企业里更进一步的：**
 
-- `src/` layout（避免 import 冲突）
-- `pyproject.toml` 统一配置
+- `../src` layout（避免 import 冲突）
+- `../pyproject.toml` 统一配置
 - `Makefile` / `scripts/` 常用命令
 
 ---
@@ -840,9 +840,9 @@ datasets/       数据（不进 git）
 
 | 项目 | 作用 | 什么时候加 |
 |---|---|---|
-| `pyproject.toml` 完整配置 | 依赖、工具配置 | 现在就有，可以完善 |
-| `README.md` | 别人怎么跑 | 立刻 |
-| `.gitignore` | 不提交 datasets/ 等 | 立刻 |
+| `../pyproject.toml` 完整配置 | 依赖、工具配置 | 现在就有，可以完善 |
+| `../README.md` | 别人怎么跑 | 立刻 |
+| `../.gitignore` | 不提交 datasets/ 等 | 立刻 |
 | GitHub Actions | 自动跑测试 | 有 GitHub 仓库时 |
 | Dockerfile | 环境隔离 | 部署时 |
 | 混合精度（AMP） | GPU 加速 2x | 有 GPU 时 |
@@ -893,9 +893,9 @@ datasets/       数据（不进 git）
 
 按优先级：
 
-1. **`pyproject.toml` 完整配置** — 依赖管理、工具配置
-2. **`README.md`** — 项目说明书
-3. **`.gitignore`** — 什么不该进 Git
+1. **`../pyproject.toml` 完整配置** — 依赖管理、工具配置
+2. **`../README.md`** — 项目说明书
+3. **`../.gitignore`** — 什么不该进 Git
 4. **GitHub Actions** — 自动跑 pytest
 5. **数据增强** — `torchvision.transforms`
 6. **混合精度（AMP）** — GPU 上 2x 加速
