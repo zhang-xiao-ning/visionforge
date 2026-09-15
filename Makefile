@@ -2,7 +2,7 @@
 # My Test Project
 # ============================================================
 
-.PHONY: help install test lint format train board clean
+.PHONY: help install install-hooks test lint format train board clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -14,6 +14,7 @@ AMP ?=
 help:
 	@echo "Available targets:"
 	@echo "  make install              uv sync"
+	@echo "  make install-hooks        Install git pre-commit hooks"
 	@echo "  make test                 uv run pytest"
 	@echo "  make lint                 uv run ruff + mypy"
 	@echo "  make format               uv run ruff format"
@@ -24,6 +25,10 @@ help:
 
 install:
 	uv sync
+
+install-hooks:
+	uv run pre-commit install
+	@echo "Pre-commit hook installed."
 
 test:
 	uv run pytest -v

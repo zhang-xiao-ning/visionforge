@@ -15,6 +15,7 @@ resumable training, and reproducible experiments.
 ```python
 from my_test_project import MLP, ViT
 model = ViT()
+```
 
 ## Installation
 
@@ -22,4 +23,13 @@ model = ViT()
 git clone <repo-url>
 cd my_test_project
 pip install -e ".[dev]"
+```
+After installing dependencies, install git hooks:
+
+```bash
+make install-hooks
+```
+
+This runs ruff and mypy automatically before every commit.
+
 
