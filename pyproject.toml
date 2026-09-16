@@ -12,6 +12,10 @@ dependencies = [
     "torch==2.2.2",
     "torchvision==0.17.2",
     "numpy<2",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.53.0",
+    "python-multipart>=0.0.32",
+    "pillow>=12.3.0",
 ]
 [dependency-groups]
 dev = [
@@ -55,6 +59,7 @@ select = [
 ]
 ignore = [
     "E501",  # line too long, 由 line-length 统一控制
+    "B008",  # FastAPI depends on function calls in argument defaults
 ]
 
 [tool.ruff.lint.isort]

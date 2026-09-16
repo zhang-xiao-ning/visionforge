@@ -2,7 +2,7 @@
 # My Test Project
 # ============================================================
 
-.PHONY: help install install-hooks test lint format train board export clean
+.PHONY: help install install-hooks test lint format train board export serve clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -13,6 +13,8 @@ AMP     ?=
 CKPT    ?=
 OUT     ?=
 OPSET   ?= 17
+ONNX    ?= exports/mlp.onnx
+PORT    ?= 8000
 
 help:
 	@echo "Available targets:"
@@ -27,6 +29,8 @@ help:
 	@echo "  make board                Launch TensorBoard on outputs/"
 	@echo "  make export               Export checkpoint to ONNX"
 	@echo "      EXP=mlp [CKPT=path] [OUT=path] [OPSET=17]"
+	@echo "  make serve                Start FastAPI inference server"
+	@echo "      ONNX=exports/mlp.onnx PORT=8000"
 
 install:
 	uv sync
@@ -71,3 +75,6 @@ clean:
 
 board:
 	uv run tensorboard --logdir outputs/
+
+serve:
+	ONNX_PATH=$(ONNX) uv run uvicorn serving.api:app --host 0.0.0.0 --port $(PORT) --reload --app-dir src
