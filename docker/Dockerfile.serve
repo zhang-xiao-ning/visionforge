@@ -1,0 +1,31 @@
+FROM python:3.12-slim
+
+# 用清华源加速（国内构建）
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+WORKDIR /app
+
+# 先装 CPU 版 torch / torchvision（官方 CPU index）
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.2.2 torchvision==0.17.2
+
+# 再装其它依赖（走清华源）
+RUN pip install --no-cache-dir \
+    fastapi \
+    "uvicorn[standard]" \
+    python-multipart \
+    pillow \
+    "onnxruntime<1.20" \
+    numpy
+
+# 复制代码和 ONNX 模型
+COPY src/ ./src/
+COPY exports/ ./exports/
+
+ENV PYTHONPATH=/app/src
+ENV ONNX_PATH=/app/exports/mlp.onnx
+
+EXPOSE 8000
+
+CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
