@@ -1,0 +1,12 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.serve
+    image: my-test-project-serve:latest
+    container_name: my-test-project-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ONNX_PATH=/app/exports/mlp.onnx
+    restart: unless-stopped
