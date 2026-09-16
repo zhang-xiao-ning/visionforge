@@ -25,6 +25,7 @@ htmlcov/
 datasets/
 checkpoints/
 outputs/
+exports/
 *.pt
 *.pth
 *.ckpt
