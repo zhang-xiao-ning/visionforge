@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir \
     python-multipart \
     pillow \
     "onnxruntime<1.20" \
-    numpy
+    numpy<2
 
 # 复制代码和 ONNX 模型
 COPY src/ ./src/
