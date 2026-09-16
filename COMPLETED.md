@@ -4,6 +4,30 @@
 
 ---
 
+## v0.1.0 — 2026-09-16
+
+### 阶段 4：DevOps 闭环（第 23-25 步）
+
+- [x] **第 23 步**：ONNX 导出
+  - `src/export/onnx_export.py`
+  - PyTorch vs ONNX 输出验证（`max_diff < 1e-5`）
+  - `make export EXP=mlp` / `make export EXP=deep_convnet`
+  - 注意：`vit` 导出留待以后（Mac 上没有 vit checkpoint）
+- [x] **第 24 步**：FastAPI 推理服务
+  - `src/serving/api.py`（`/health` + `/predict`）
+  - `src/serving/inference.py`（ONNX Runtime 推理）
+  - `src/serving/schema.py`（Pydantic schema）
+  - `make serve`
+  - 浏览器 `http://localhost:8000/docs` 自动文档
+- [x] **第 25 步**：Docker 部署
+  - `docker/Dockerfile.serve`（CPU torch + 清华源 + `numpy<2`）
+  - `docker-compose.yml`
+  - `.dockerignore`
+  - 在 WSL2 上构建运行
+  - **完整闭环打通**：Mac → SSH 隧道 → 阿里云中转 → WSL2 → Docker → ONNX 推理
+
+---
+
 ## v0.1.0 — 2026-09-15
 
 ### 阶段 1：从 CS231N 作业到项目骨架（第 1–10 步）
@@ -43,6 +67,16 @@
   - `torch.cuda.amp.autocast` + `GradScaler`
   - 只在 CUDA 上生效，MPS / CPU 自动退化
   - `--amp` 命令行开关
+
+### 阶段 4：可观测（第 16 步）
+
+- [x] **第 16 步**：TensorBoard
+  - `SummaryWriter` 记录 loss / val_acc / lr
+  - `outputs/<exp>_<timestamp>/` 下生成 event 文件
+  - `make board` 一键启动
+
+### 阶段 5：本地开发环境（第 17–19 步）
+
 - [x] **第 17 步**：ruff 代码风格清理
   - 删除坏文件 `src/utils/init.py`
   - import 排序、`%` → f-string、格式化
@@ -52,6 +86,25 @@
   - ruff + ruff-format + mypy
 - [x] **第 19 步**：`make install-hooks`
   - 新人 clone 后一句命令装 hook
+
+### 阶段 6：工程质量（第 20–22 步）
+
+- [x] **第 20 步**：类型注解补齐
+  - 打开 `disallow_untyped_defs = true`
+  - 30 个类型错误全部修复
+  - `mypy src/` 全过
+- [x] **第 21 步**：补单元测试
+  - `test_evaluator.py`（3）
+  - `test_trainer.py`（5）
+  - `test_logger.py`（4）
+  - 测试与硬件解耦（`USE_GPU` 环境变量）
+  - 总计 22 passed, 1 skipped
+- [x] **第 22 步**：README 完善
+  - CLI 参数表
+  - 环境变量表
+  - 完整目录结构
+  - "如何加新模型" / "如何加新数据集"
+
 ---
 
 ## 项目结构
@@ -75,6 +128,12 @@ my_test_project/
 │   ├── training/
 │   │   ├── train.py
 │   │   └── evaluator.py
+│   ├── export/
+│   │   └── onnx_export.py       # ONNX 导出
+│   ├── serving/
+│   │   ├── api.py               # FastAPI 路由
+│   │   ├── inference.py         # ONNX 推理
+│   │   └── schema.py            # Pydantic schema
 │   └── utils/
 │       ├── path.py
 │       ├── logger.py
@@ -84,12 +143,21 @@ my_test_project/
 │   ├── conftest.py
 │   ├── test_models.py
 │   ├── test_transforms.py
-│   └── test_data.py
+│   ├── test_data.py
+│   ├── test_evaluator.py
+│   ├── test_trainer.py
+│   └── test_logger.py
+├── docker/
+│   └── Dockerfile.serve         # 推理镜像
+├── docker-compose.yml
+├── .dockerignore
 ├── Makefile
 ├── pyproject.toml
+├── .pre-commit-config.yaml
 ├── README.md
 ├── TODO.md
 ├── COMPLETED.md
+├── memo-1.md ~ memo-5.md
 ├── .gitignore
 ├── pack.sh
 └── dump_code.sh
