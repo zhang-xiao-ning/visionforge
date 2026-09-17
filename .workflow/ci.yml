@@ -1,0 +1,25 @@
+name: CI
+displayName: 'CI Pipeline'
+
+triggers:
+  push:
+    branches:
+      include:
+        - main
+  pull_request:
+    branches:
+      include:
+        - main
+
+stages:
+  - stage:
+      name: test
+      displayName: 'Lint, type check, test'
+      steps:
+        - step: build@python
+          name: ci
+          displayName: 'Run CI script'
+          pythonVersion: '3.12'
+          commands:
+            - pip install uv
+            - bash scripts/ci.sh
