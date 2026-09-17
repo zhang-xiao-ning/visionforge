@@ -2,7 +2,7 @@
 # My Test Project
 # ============================================================
 
-.PHONY: help install install-hooks test lint format train board export serve clean
+.PHONY: help install install-hooks test lint format train board export serve ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -31,6 +31,7 @@ help:
 	@echo "      EXP=mlp [CKPT=path] [OUT=path] [OPSET=17]"
 	@echo "  make serve                Start FastAPI inference server"
 	@echo "      ONNX=exports/mlp.onnx PORT=8000"
+	@echo "  make ci                   Run full CI pipeline locally"
 
 install:
 	uv sync
@@ -41,6 +42,9 @@ install-hooks:
 
 test:
 	uv run pytest -v
+
+ci:
+	bash scripts/ci.sh
 
 lint:
 	uv run ruff check src/ tests/
