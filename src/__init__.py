@@ -1,4 +1,4 @@
-"""My Test Project: CIFAR-10 image classification with PyTorch."""
+"""visionforge: CIFAR-10 image classification with PyTorch."""
 
 from models.deep_convnet import DeepConvNet
 from models.mlp import MLP

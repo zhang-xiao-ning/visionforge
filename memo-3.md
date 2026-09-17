@@ -202,7 +202,7 @@ Pre-commit hook installed.
 ### 目录结构
 
 ```text
-my_test_project/
+visionforge/
 ├── src/
 │   ├── __init__.py              # 公开 API
 │   ├── py.typed

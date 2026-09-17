@@ -22,7 +22,7 @@ def create_app(onnx_path: Path | None = None) -> FastAPI:
             f"ONNX model not found at {onnx_path}. Run `make export EXP=mlp` first."
         )
 
-    app = FastAPI(title="my_test_project inference", version="0.1.0")
+    app = FastAPI(title="visionforge inference", version="0.1.0")
     classifier = OnnxClassifier(onnx_path)
 
     @app.get("/health", response_model=HealthResponse)

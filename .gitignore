@@ -50,3 +50,6 @@ events.out.tfevents.*
 # ---------- Jupyter ----------
 .ipynb_checkpoints/
 *.ipynb_checkpoints
+
+# ---------- all_code ----------
+all_code.txt

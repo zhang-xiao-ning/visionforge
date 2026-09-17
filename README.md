@@ -1,4 +1,4 @@
-# My Test Project
+# visionforge
 
 CIFAR-10 image classification with PyTorch.
 
@@ -21,8 +21,8 @@ tests + pre-commit).
 ## Installation
 
 ```bash
-git clone https://gitee.com/zhang-xiao-ning/my_test_project.git
-cd my_test_project
+git clone https://github.com/zhang-xiao-ning/visionforge.git
+cd visionforge
 uv sync
 ```
 
@@ -145,7 +145,7 @@ make board     # starts TensorBoard at http://localhost:6006
 ## Project Structure
 
 ```text
-my_test_project/
+visionforge/
 ├── src/
 │   ├── __init__.py              # public API + __version__
 │   ├── py.typed                 # type marker for mypy

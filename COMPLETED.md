@@ -110,7 +110,7 @@
 ## 项目结构
 
 ```text
-my_test_project/
+visionforge/
 ├── src/
 │   ├── __init__.py              # 公共 API + 版本号
 │   ├── py.typed

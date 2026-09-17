@@ -349,53 +349,6 @@ wheels = [
 ]
 
 [[package]]
-name = "my-test-project"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "fastapi" },
-    { name = "numpy" },
-    { name = "pillow" },
-    { name = "python-multipart" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "onnx" },
-    { name = "onnxruntime" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "tensorboard" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = ">=0.141.1" },
-    { name = "numpy", specifier = "<2" },
-    { name = "pillow", specifier = ">=12.3.0" },
-    { name = "python-multipart", specifier = ">=0.0.32" },
-    { name = "torch", specifier = "==2.2.2" },
-    { name = "torchvision", specifier = "==0.17.2" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.53.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.10" },
-    { name = "onnx", specifier = ">=1.22.0" },
-    { name = "onnxruntime", specifier = "<1.20" },
-    { name = "pre-commit", specifier = ">=3.7" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "ruff", specifier = ">=0.5" },
-    { name = "tensorboard", specifier = ">=2.21.0" },
-]
-
-[[package]]
 name = "mypy"
 version = "2.3.1"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -1027,6 +980,53 @@ dependencies = [
 sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/52/5c/ba82fdd0da13ade01453fc08277a70abc79128101319549f55f2e13f8f83/virtualenv-21.7.9.tar.gz", hash = "sha256:a7e42d81d779dec8afd7dc4be71640fb959ea861bccfa5980cb4ad9f92e30675", size = 5348882, upload-time = "2026-09-09T01:03:27.752Z" }
 wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/85/fc/888c80b8da917bfc48a41887eca244f995d190bd3c01175727089fcaf27e/virtualenv-21.7.9-py3-none-any.whl", hash = "sha256:ba3b0bb41063c848d84d76a9fe3fb7711aaa0f2fe78708e8f3cd9714770e4eac", size = 5324667, upload-time = "2026-09-09T01:03:26.023Z" },
+]
+
+[[package]]
+name = "visionforge"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "python-multipart" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "onnx" },
+    { name = "onnxruntime" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "tensorboard" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.141.1" },
+    { name = "numpy", specifier = "<2" },
+    { name = "pillow", specifier = ">=12.3.0" },
+    { name = "python-multipart", specifier = ">=0.0.32" },
+    { name = "torch", specifier = "==2.2.2" },
+    { name = "torchvision", specifier = "==0.17.2" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.53.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.10" },
+    { name = "onnx", specifier = ">=1.22.0" },
+    { name = "onnxruntime", specifier = "<1.20" },
+    { name = "pre-commit", specifier = ">=3.7" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "ruff", specifier = ">=0.5" },
+    { name = "tensorboard", specifier = ">=2.21.0" },
 ]
 
 [[package]]

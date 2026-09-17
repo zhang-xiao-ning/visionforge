@@ -244,7 +244,7 @@ USE_GPU = os.environ.get("USE_GPU", "true") == "true"
 ### 目录结构
 
 ```text
-my_test_project/
+visionforge/
 ├── src/
 │   ├── __init__.py
 │   ├── py.typed

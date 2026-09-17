@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.serve
-    image: my-test-project-serve:latest
-    container_name: my-test-project-api
+    image: visionforge-serve:latest
+    container_name: visionforge-api
     ports:
       - "8000:8000"
     environment:

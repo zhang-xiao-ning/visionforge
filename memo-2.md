@@ -25,7 +25,7 @@
 ## 二、目录结构
 
 ```text
-my_test_project/
+visionforge/
 ├── src/
 │   ├── __init__.py              # 公开 API + 版本号
 │   ├── py.typed                 # mypy 类型标记
@@ -72,7 +72,7 @@ my_test_project/
 
 ```bash
 git clone <repo>
-cd my_test_project
+cd visionforge
 uv sync
 ```
 

@@ -1,5 +1,5 @@
 [project]
-name = "my-test-project"
+name = "visionforge"
 version = "0.1.0"
 description = "CIFAR-10 image classification with PyTorch"
 readme = "README.md"

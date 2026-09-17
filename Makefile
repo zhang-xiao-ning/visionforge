@@ -1,5 +1,5 @@
 # ============================================================
-# My Test Project
+# visionforge
 # ============================================================
 
 .PHONY: help install install-hooks test lint format train board export serve ci clean
