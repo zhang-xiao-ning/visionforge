@@ -9,6 +9,7 @@ echo "=========================================="
 if [ -n "${CI:-}" ]; then
     export UV_TORCH_BACKEND=cpu
     echo "(CI environment detected: using CPU torch)"
+    rm -f uv.lock        # ← 关键：删掉 lock，强制重新解析
 fi
 
 uv sync
