@@ -13,6 +13,7 @@
   - `.github/workflows/ci.yml`：GitHub Actions
   - 从 Gitee Go 切到 GitHub Actions（免费、无额度限制）
   - 首次 push 成功，耗时 5m35s（冷缓存）
+  - **CI 时长从 5m30s 优化到 45s**（CPU torch + 删 lock）
 
 ### 项目更名
 

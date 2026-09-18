@@ -318,6 +318,20 @@ PyCharm 里也要重新打开项目。
 
 **先不加**，等真觉得慢了再说。
 
+### 坑 5：CI 下载了 2GB 无用的 CUDA 库
+
+**症状**：CI 5m30s，日志显示下载 `torch (720.5MiB)` + 一堆 `nvidia-*-cu12` 库。
+
+**原因**：`uv.lock` 锁定了 CUDA 版 torch，GitHub Actions runner 无 GPU，白下。
+
+**解**：CI 里 `export UV_TORCH_BACKEND=cpu` + `rm -f uv.lock` 强制重新解析。
+
+**效果**：CI 从 5m30s → 45s（7 倍加速）。
+
+**教训**：
+- `UV_TORCH_BACKEND` 只在 `uv lock` 时生效，`uv sync` 读 lock 不动
+- CI 环境和开发环境不同，**不能盲目复用 lock**
+
 ---
 
 ## 七、下一步
