@@ -5,6 +5,12 @@ set -euo pipefail
 echo "=========================================="
 echo "CI: install dependencies"
 echo "=========================================="
+# 若在 CI 环境，强制使用 CPU 版 torch，避免下载 2.5GB 的 CUDA 库
+if [ -n "${CI:-}" ]; then
+    export UV_TORCH_BACKEND=cpu
+    echo "(CI environment detected: using CPU torch)"
+fi
+
 uv sync
 
 echo ""
