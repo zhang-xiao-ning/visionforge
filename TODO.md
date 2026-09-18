@@ -2,10 +2,10 @@
 
 ## DevOps 阶段
 
-- [ ] CI（Gitee Go / Jenkins / GitHub Actions）
-  - [ ] 自动跑 pytest
-  - [ ] 自动跑 ruff + mypy
-  - [ ] README 加 CI 徽章
+- [x] CI（GitHub Actions）
+  - [x] 自动跑 pytest
+  - [x] 自动跑 ruff + mypy
+  - [x] README 加 CI 徽章（待加）
 - [ ] 分布式训练 DDP
   - [ ] `DistributedDataParallel` 支持
   - [ ] `torchrun --nproc_per_node=2` 验证

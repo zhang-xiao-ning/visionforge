@@ -1,5 +1,7 @@
 # visionforge
 
+![CI](https://github.com/zhang-xiao-ning/visionforge/actions/workflows/ci.yml/badge.svg)
+
 CIFAR-10 image classification with PyTorch.
 
 A small, clean, extensible training framework that supports multiple

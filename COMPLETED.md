@@ -3,6 +3,24 @@
 已完成的工作记录。按时间倒序。
 
 ---
+## v0.1.0 — 2026-09-18
+
+### 阶段 7：CI（第 26 步）
+
+- [x] **第 26 步**：CI 自动化
+  - `scripts/ci.sh`：平台无关的 CI 脚本
+  - `make ci`：本地跑完整 CI 流程
+  - `.github/workflows/ci.yml`：GitHub Actions
+  - 从 Gitee Go 切到 GitHub Actions（免费、无额度限制）
+  - 首次 push 成功，耗时 5m35s（冷缓存）
+
+### 项目更名
+
+- [x] `my_test_project` → `visionforge`
+  - GitHub / Gitee 仓库改名
+  - `pyproject.toml` / `docker-compose.yml` / `README.md` 同步
+  - 本地目录和 WSL 目录改名
+  - 由于 import 用的是"脚本式"，代码零改动
 
 ## v0.1.0 — 2026-09-16
 
