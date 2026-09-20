@@ -10,3 +10,25 @@ services:
     environment:
       - ONNX_PATH=/app/exports/mlp.onnx
     restart: unless-stopped
+
+  train:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.train
+    image: visionforge-train:latest
+    container_name: visionforge-train
+    volumes:
+      - ./datasets:/app/datasets:ro
+      - ./checkpoints:/app/checkpoints
+      - ./outputs:/app/outputs
+    environment:
+      - USE_GPU=true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - train
