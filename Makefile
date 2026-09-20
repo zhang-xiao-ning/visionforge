@@ -2,7 +2,7 @@
 # visionforge
 # ============================================================
 
-.PHONY: help install install-hooks test lint format train board export serve ci clean
+.PHONY: help install install-hooks test lint format train train-docker board export serve ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -25,13 +25,15 @@ help:
 	@echo "  make format               uv run ruff format"
 	@echo "  make train                uv run train"
 	@echo "      EXP=mlp EPOCHS=5 BS=128 LR=0.01 RESUME=path/to.pt"
-	@echo "  make clean                Remove caches"
+	@echo "  make train-docker         Train inside Docker (GPU)"
+	@echo "      EXP=mlp EPOCHS=5"
 	@echo "  make board                Launch TensorBoard on outputs/"
 	@echo "  make export               Export checkpoint to ONNX"
 	@echo "      EXP=mlp [CKPT=path] [OUT=path] [OPSET=17]"
 	@echo "  make serve                Start FastAPI inference server"
 	@echo "      ONNX=exports/mlp.onnx PORT=8000"
 	@echo "  make ci                   Run full CI pipeline locally"
+	@echo "  make clean                Remove caches"
 
 install:
 	uv sync
@@ -61,6 +63,14 @@ train:
 		--epochs $(EPOCHS) \
 		--batch-size $(BS) \
 		$(if $(LR),--learning-rate $(LR) ,)$(if $(RESUME),--resume $(RESUME),)$(if $(AMP),--amp,)
+
+train-docker:
+	docker compose --profile train run --rm train \
+		--experiment $(EXP) \
+		--epochs $(EPOCHS) \
+		$(if $(BS),--batch-size $(BS),) \
+		$(if $(LR),--learning-rate $(LR),) \
+		$(if $(RESUME),--resume $(RESUME),)
 
 export:
 	uv run python src/export/onnx_export.py \

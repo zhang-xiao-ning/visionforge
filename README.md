@@ -67,6 +67,8 @@ Or directly:
 uv run python src/main.py --experiment vit --epochs 10 --batch-size 256 --amp
 ```
 
+
+
 ### Resume from checkpoint
 
 ```bash
@@ -110,6 +112,30 @@ Example:
 ```bash
 USE_GPU=false make train EXP=mlp EPOCHS=1   # force CPU
 ```
+
+### Docker Training (GPU only)
+
+If you have a GPU machine with Docker + nvidia-container-toolkit:
+
+```bash
+# Build the training image (one-time, ~2.4 GB)
+docker compose --profile train build train
+
+# Run 1 epoch
+make train-docker EXP=mlp EPOCHS=1
+
+# Or directly
+docker compose --profile train run --rm train \
+    --experiment vit --epochs 10 --batch-size 256
+```
+
+The container mounts:
+
+- `datasets/` (read-only)
+- `checkpoints/` (read-write)
+- `outputs/` (read-write)
+
+Training logs and checkpoints appear on the host filesystem.
 
 ---
 

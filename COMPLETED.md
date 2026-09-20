@@ -3,6 +3,20 @@
 已完成的工作记录。按时间倒序。
 
 ---
+
+## v0.1.0 — 2026-09-20
+
+### 阶段 8：训练镜像（第 27 步）
+
+- [x] **第 27 步**：训练 Docker 镜像
+  - `docker/Dockerfile.train`（CUDA 12.1 + torch 2.2.2+cu121）
+  - `docker-compose.yml` 加 `train` service（`profiles: [train]`）
+  - GPU 直通：`deploy.resources.reservations.devices`
+  - 卷挂载：`datasets:ro` / `checkpoints` / `outputs`
+  - 在 4070 WSL2 上验证：`using device: cuda`，1 epoch ~6 秒
+  - 可复现：两次运行数值完全一致
+
+
 ## v0.1.0 — 2026-09-18
 
 ### 阶段 7：CI（第 26 步）
