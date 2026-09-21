@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from config import device, dtype, print_every
 from training.evaluator import evaluate
+from training.strategy import TrainingStrategy
 from utils.logger import CSVRecorder
 
 
@@ -27,6 +28,7 @@ def train(
     recorder: CSVRecorder | None = None,
     use_amp: bool = False,
     writer: SummaryWriter | None = None,
+    strategy: TrainingStrategy | None = None,
 ) -> dict[str, float | int]:
     model = model.to(device=device)
     best_state = None
@@ -37,13 +39,21 @@ def train(
     amp_enabled = use_amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
+    def is_main() -> bool:
+        return strategy is None or strategy.is_main_process()
+
     def log(msg: str) -> None:
+        if not is_main():
+            return
         if logger is not None:
             logger.info(msg)
         else:
             print(msg)
 
     for e in range(start_epoch, epochs + 1):
+        if strategy is not None:
+            strategy.set_epoch(e)
+
         running_loss = 0.0
         n_batches = 0
 
@@ -69,38 +79,44 @@ def train(
                 log(f"Epoch {e}, Iter {t}, loss = {loss.item():.4f}")
 
         avg_loss = running_loss / n_batches
-        val_acc = evaluate(model, loader_val)
         lr_now = optimizer.param_groups[0]["lr"]
+
+        # 只有主进程评估（简化版 DDP，避免每卡都跑一遍验证集）
+        if is_main():
+            val_acc = evaluate(model, loader_val)
+        else:
+            val_acc = 0.0
 
         log(f"Epoch {e} done. avg_train_loss = {avg_loss:.4f}, val_acc = {val_acc:.4f}")
 
-        if recorder is not None:
+        if recorder is not None and is_main():
             recorder.log(e, avg_loss, val_acc, lr_now)
 
         # TensorBoard
-        if writer is not None:
+        if writer is not None and is_main():
             writer.add_scalar("loss/train", avg_loss, e)
             writer.add_scalar("acc/val", val_acc, e)
             writer.add_scalar("lr", lr_now, e)
 
         if scheduler is not None:
             scheduler.step()
-            log("  LR -> {:.6g}".format(optimizer.param_groups[0]["lr"]))
+            log(f"  LR -> {optimizer.param_groups[0]['lr']:.6g}")
 
-        if val_acc > best_acc:
-            best_acc = val_acc
-            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-            if early_stop_patience > 0 and epochs_no_improve >= early_stop_patience:
-                log(f"Early stopping at epoch {e} (no improve for {epochs_no_improve} epochs)")
-                last_epoch = e
-                break
+        if is_main():
+            if val_acc > best_acc:
+                best_acc = val_acc
+                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                if early_stop_patience > 0 and epochs_no_improve >= early_stop_patience:
+                    log(f"Early stopping at epoch {e} (no improve for {epochs_no_improve} epochs)")
+                    last_epoch = e
+                    break
 
         last_epoch = e
 
-    if best_state is not None:
+    if best_state is not None and is_main():
         model.load_state_dict(best_state)
 
     log(f"Best val accuracy = {best_acc:.4f}")

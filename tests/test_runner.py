@@ -10,7 +10,7 @@ from experiment.runner import ExperimentRunner
 from training.strategy import SingleDeviceStrategy
 
 
-def _fake_build_loaders(name: str, batch_size: int):
+def _fake_build_loaders(name: str, batch_size: int, **kwargs):
     """Return tiny loaders with the right shape for MLP."""
     x = torch.randn(8, 3, 32, 32)
     y = torch.randint(0, 10, (8,))

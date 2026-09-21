@@ -85,7 +85,11 @@ class ExperimentRunner:
     # ---------- construction ----------
 
     def _build_loaders(self) -> tuple[torch.utils.data.DataLoader, ...]:
-        return build_loaders(name=self.dataset_name, batch_size=self.batch_size)
+        return build_loaders(
+            name=self.dataset_name,
+            batch_size=self.batch_size,
+            strategy=self.strategy,
+        )
 
     def _build_model(self) -> torch.nn.Module:
         model_cls, _ = EXPERIMENTS[self.cfg.experiment]
@@ -138,6 +142,7 @@ class ExperimentRunner:
             recorder=self.artifacts.recorder,
             use_amp=self.cfg.amp,
             writer=self.artifacts.writer,
+            strategy=self.strategy,
         )
 
         test_acc = self._evaluate_test()
