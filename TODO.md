@@ -13,9 +13,9 @@
   - [x] `docker/Dockerfile.train`（GPU 版）
   - [x] 支持挂载 `datasets/` 和 `checkpoints/`
   - [x] 验证：`docker run` 训练 1 epoch
-- [ ] 分布式训练 DDP
-  - [ ] `DistributedDataParallel` 支持
-  - [ ] `torchrun --nproc_per_node=2` 验证
+- [x] 分布式训练 DDP
+  - [x] `DistributedDataParallel` 支持
+  - [x] `torchrun --nproc_per_node=1` 验证（4070 上跑通）
 - [ ] docker-compose 多服务
   - [ ] 加数据库 / 前端等其他服务
 - [ ] docker-compose 多服务

@@ -3,6 +3,24 @@
 已完成的工作记录。按时间倒序。
 
 ---
+## v0.1.0 — 2026-09-22
+
+### 阶段 9：架构重构 + DDP（第 28 步）
+
+- [x] **Commit 1**：`TrainingStrategy` 抽象（SingleDevice + DDP）
+- [x] **Commit 2**：`RunArtifacts` 抽象（路径 / logger / recorder / writer）
+- [x] **Commit 3**：`ExperimentRunner` 编排 + `main.py` 精简（200 → 90 行）
+- [x] **Commit 4**：`strategy` 接入 `datasets.py` / `train.py`（向后兼容）
+- [x] **Commit 5**：DDP 脚本 + Makefile + 4070 验证
+  - `scripts/train_ddp.sh`
+  - `make train-ddp EXP=mlp EPOCHS=1 NPROC=1`
+  - 4070 上跑通，可复现性验证通过
+- [x] **Commit 6**：文档更新（memo-8 + COMPLETED + TODO）
+
+**重构效果**：
+- 加 FSDP / DeepSpeed 只需加一个 `TrainingStrategy` 子类
+- `main.py` / `runner.py` / `datasets.py` / `train.py` 不动
+- 数值逐位一致（重构不改变行为）
 
 ## v0.1.0 — 2026-09-20
 
