@@ -4,10 +4,10 @@
 
 CIFAR-10 image classification with PyTorch.
 
-A small, clean, extensible training framework that supports multiple
-models (MLP / ConvNet / ViT), resumable training, reproducible
-experiments, and a full local dev environment (lint + type check +
-tests + pre-commit).
+A small, clean, extensible training framework. Supports multiple models
+(MLP / ConvNet / ViT), distributed training, ONNX export, a FastAPI
+inference service, and a full local dev environment (lint + type check
++ tests + pre-commit + CI).
 
 ---
 
@@ -17,6 +17,7 @@ tests + pre-commit).
 - [uv](https://github.com/astral-sh/uv) (dependency manager)
 - PyTorch 2.2
 - (Optional) CUDA 12.1 for GPU training
+- (Optional) Docker + nvidia-container-toolkit for containerized training
 
 ---
 
@@ -28,7 +29,7 @@ cd visionforge
 uv sync
 ```
 
-Then install git hooks (runs ruff + mypy before every commit):
+Install git hooks (runs ruff + mypy before every commit):
 
 ```bash
 make install-hooks
@@ -40,14 +41,30 @@ make install-hooks
 
 CIFAR-10 is expected under `datasets/cifar-10-batches-py/`.
 
-If you don't have it yet:
+If you don't have it:
 
 ```bash
 mkdir -p datasets
-# Download cifar-10-python.tar.gz manually and extract here
-# Expected structure:
-# datasets/cifar-10-batches-py/data_batch_1 ...
+cd datasets
+wget https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+tar -xzf cifar-10-python.tar.gz
+rm cifar-10-python.tar.gz
 ```
+
+Expected structure:
+
+```text
+datasets/cifar-10-batches-py/
+├── data_batch_1
+├── data_batch_2
+├── data_batch_3
+├── data_batch_4
+├── data_batch_5
+├── test_batch
+└── batches.meta
+```
+
+Each `data_batch_*` should be ~30 MB.
 
 ---
 
@@ -67,19 +84,27 @@ Or directly:
 uv run python src/main.py --experiment vit --epochs 10 --batch-size 256 --amp
 ```
 
-
-
 ### Resume from checkpoint
 
 ```bash
 make train EXP=vit EPOCHS=20 RESUME=checkpoints/vit_20260914_223852.pt
 ```
 
-### See all options
+### DDP (distributed training)
 
 ```bash
-make help
-uv run python src/main.py --help
+# Single process (validation of DDP path)
+make train-ddp EXP=mlp EPOCHS=5 NPROC=1
+
+# Multi-GPU (when more GPUs are available)
+make train-ddp EXP=vit EPOCHS=10 NPROC=2
+```
+
+### Docker training (GPU only)
+
+```bash
+docker compose --profile train build train           # one-time
+make train-docker EXP=mlp EPOCHS=1
 ```
 
 ### Full CLI argument list
@@ -113,33 +138,9 @@ Example:
 USE_GPU=false make train EXP=mlp EPOCHS=1   # force CPU
 ```
 
-### Docker Training (GPU only)
-
-If you have a GPU machine with Docker + nvidia-container-toolkit:
-
-```bash
-# Build the training image (one-time, ~2.4 GB)
-docker compose --profile train build train
-
-# Run 1 epoch
-make train-docker EXP=mlp EPOCHS=1
-
-# Or directly
-docker compose --profile train run --rm train \
-    --experiment vit --epochs 10 --batch-size 256
-```
-
-The container mounts:
-
-- `datasets/` (read-only)
-- `checkpoints/` (read-write)
-- `outputs/` (read-write)
-
-Training logs and checkpoints appear on the host filesystem.
-
 ---
 
-## Supported Experiments
+## Supported experiments
 
 | Name | Model | Default LR | Notes |
 |---|---|---|---|
@@ -150,9 +151,43 @@ Training logs and checkpoints appear on the host filesystem.
 
 ---
 
+## Inference
+
+### Export to ONNX
+
+```bash
+make export EXP=mlp
+# exports/mlp.onnx
+```
+
+Verifies PyTorch vs ONNX output (max diff < 1e-5) as part of the export.
+
+### FastAPI service
+
+```bash
+make serve                            # default ONNX=exports/mlp.onnx
+make serve ONNX=exports/deep_convnet.onnx PORT=8001
+```
+
+Endpoints:
+
+- `GET /health` → `{"status": "ok", "model": "mlp.onnx"}`
+- `POST /predict` (multipart file upload) → top-k predictions
+
+Interactive docs: <http://localhost:8000/docs>
+
+### Docker serving image
+
+```bash
+docker compose up -d                  # start api service
+docker compose logs -f api
+```
+
+---
+
 ## Outputs
 
-Every run creates four files:
+Every run creates:
 
 ```text
 outputs/<exp>_<timestamp>.log     # full log
@@ -165,12 +200,12 @@ checkpoints/<exp>_<timestamp>.pt  # model + optimizer + scheduler
 View training curves:
 
 ```bash
-make board     # starts TensorBoard at http://localhost:6006
+make board     # TensorBoard at http://localhost:6006
 ```
 
 ---
 
-## Project Structure
+## Project structure
 
 ```text
 visionforge/
@@ -178,10 +213,11 @@ visionforge/
 │   ├── __init__.py              # public API + __version__
 │   ├── py.typed                 # type marker for mypy
 │   ├── config.py                # TrainConfig + device + global constants
-│   ├── main.py                  # CLI entry, registers experiments
+│   ├── registry.py              # EXPERIMENTS registry
+│   ├── main.py                  # CLI entry
 │   ├── data/
-│   │   ├── transforms.py        # data augmentation
-│   │   ├── cifar10.py           # CIFAR-10 specific config
+│   │   ├── transforms.py
+│   │   ├── cifar10.py
 │   │   └── datasets.py          # dataset registry + loader builder
 │   ├── models/
 │   │   ├── mlp.py
@@ -190,35 +226,55 @@ visionforge/
 │   │   └── vit.py
 │   ├── training/
 │   │   ├── train.py             # generic training loop
-│   │   └── evaluator.py         # generic evaluate()
+│   │   ├── evaluator.py         # generic evaluate()
+│   │   └── strategy.py          # SingleDevice / DDP
+│   ├── experiment/
+│   │   ├── artifacts.py         # RunArtifacts
+│   │   └── runner.py            # ExperimentRunner
+│   ├── export/
+│   │   └── onnx_export.py
+│   ├── serving/
+│   │   ├── api.py               # FastAPI routes
+│   │   ├── inference.py         # ONNX Runtime
+│   │   └── schema.py            # Pydantic schemas
 │   └── utils/
-│       ├── path.py              # path constants
-│       ├── logger.py            # logging + CSV recorder
-│       ├── seed.py              # reproducibility
-│       └── env.py               # environment snapshot
+│       ├── path.py
+│       ├── logger.py
+│       ├── seed.py
+│       └── env.py
 ├── tests/
-│   ├── conftest.py              # shared fixtures
+│   ├── conftest.py
 │   ├── test_models.py
 │   ├── test_transforms.py
 │   ├── test_data.py
 │   ├── test_evaluator.py
 │   ├── test_trainer.py
-│   └── test_logger.py
+│   ├── test_logger.py
+│   ├── test_artifacts.py
+│   ├── test_strategy.py
+│   └── test_runner.py
+├── docker/
+│   ├── Dockerfile.serve
+│   └── Dockerfile.train
+├── scripts/
+│   ├── ci.sh
+│   └── train_ddp.sh
 ├── datasets/                    # data (not in git)
 ├── checkpoints/                 # weights (not in git)
 ├── outputs/                     # logs/CSV/JSON (not in git)
-├── Makefile                     # project shortcuts
-├── pyproject.toml               # dependencies + tool config
-├── .pre-commit-config.yaml      # pre-commit hooks
+├── exports/                     # ONNX models (not in git)
+├── docker-compose.yml
+├── .dockerignore
+├── Makefile
+├── pyproject.toml
+├── .pre-commit-config.yaml
 ├── .gitignore
 ├── README.md
 ├── TODO.md
 ├── COMPLETED.md
-├── memo-1.md
-├── memo-2.md
-├── memo-3.md
-├── pack.sh                      # zip the project
-└── dump_code.sh                 # export all code as text
+├── memo-1.md ~ memo-8.md
+├── pack.sh
+└── dump_code.sh
 ```
 
 ---
@@ -234,8 +290,13 @@ make install-hooks  # install git pre-commit hooks
 make test           # pytest
 make lint           # ruff check + ruff format --check + mypy
 make format         # ruff check --fix + ruff format
-make train          # train (see above)
-make board          # launch TensorBoard
+make ci             # full CI pipeline locally
+make train          # see "Training"
+make train-ddp      # DDP training
+make train-docker   # containerized training (GPU)
+make board          # TensorBoard
+make export         # ONNX export
+make serve          # FastAPI service
 make clean          # remove caches
 ```
 
@@ -244,8 +305,8 @@ make clean          # remove caches
 Every `git commit` triggers:
 
 1. `ruff check --fix` (lint + auto-fix)
-2. `ruff format` (formatting)
-3. `mypy` (type check)
+2. `ruff format`
+3. `mypy`
 
 If anything is auto-fixed, the commit is rejected. Re-run:
 
@@ -254,17 +315,11 @@ git add -A
 git commit -m "..."
 ```
 
-To skip hooks (rare):
-
-```bash
-git commit --no-verify -m "emergency"
-```
-
 ### Adding a new model
 
 1. Create `src/models/<name>.py` with a class inheriting `nn.Module`:
 
-   ```python
+```python
    import torch
    import torch.nn as nn
 
@@ -276,35 +331,33 @@ git commit --no-verify -m "emergency"
 
        def forward(self, x: torch.Tensor) -> torch.Tensor:
            ...
-   ```
+```
 
-2. Register it in `src/main.py`:
+2. Register it in `src/registry.py`:
 
-   ```python
-   EXPERIMENTS: dict[str, tuple[Callable[[], nn.Module], float]] = {
+```python
+   EXPERIMENTS = {
        ...
        "my_model": (MyModel, 1e-3),
    }
-   ```
+```
 
 3. Add a shape test in `tests/test_models.py`:
 
-   ```python
+```python
    def test_my_model_output_shape(dummy_batch):
        x, _ = dummy_batch
        model = MyModel()
        out = model(x)
        assert out.shape == (4, 10)
-   ```
+```
 
 4. Run:
 
-   ```bash
+```bash
    make test
    make train EXP=my_model EPOCHS=1
-   ```
-
-No other files need to change.
+  ```
 
 ### Adding a new dataset
 
@@ -312,14 +365,19 @@ No other files need to change.
    `(train_set, val_set, test_set)`.
 2. Register it in `src/data/datasets.py`:
 
-   ```python
+```python
    DATASET_REGISTRY = {
        "cifar10": cifar10.build_datasets,
        "my_dataset": my_dataset.build_datasets,
    }
-   ```
+```
 
 3. Run `make train EXP=mlp --dataset=my_dataset`.
+
+### Adding a new training strategy (FSDP, DeepSpeed, ...)
+
+Subclass `TrainingStrategy` in `src/training/strategy.py` and add a
+branch to `build_strategy()`. No other file needs to change.
 
 ---
 
@@ -331,8 +389,9 @@ make test
 uv run pytest -v
 ```
 
-Tests run on CPU regardless of the machine's GPU. This keeps them fast
-and deterministic across macOS / Linux / CI.
+Tests run on CPU regardless of the machine's GPU (via `USE_GPU=false`
+in `tests/conftest.py`). This keeps them fast and deterministic across
+macOS / Linux / CI.
 
 ---
 
@@ -341,6 +400,7 @@ and deterministic across macOS / Linux / CI.
 - `set_seed(42)` fixes `random`, `numpy`, `torch`
 - Every run writes a JSON snapshot with config + environment info
 - CUDA determinism enabled
+- Under DDP, `DistributedSampler` reshuffles per epoch via `set_epoch`
 
 ---
 
