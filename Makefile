@@ -2,7 +2,7 @@
 # visionforge
 # ============================================================
 
-.PHONY: help install install-hooks test lint format train train-docker board export serve ci clean
+.PHONY: help install install-hooks test lint format train train-docker train-ddp board export serve ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -15,6 +15,7 @@ OUT     ?=
 OPSET   ?= 17
 ONNX    ?= exports/mlp.onnx
 PORT    ?= 8000
+NPROC   ?= 1
 
 help:
 	@echo "Available targets:"
@@ -27,6 +28,8 @@ help:
 	@echo "      EXP=mlp EPOCHS=5 BS=128 LR=0.01 RESUME=path/to.pt"
 	@echo "  make train-docker         Train inside Docker (GPU)"
 	@echo "      EXP=mlp EPOCHS=5"
+	@echo "  make train-ddp            DDP training (NPROC=1,2,...)"
+	@echo "      EXP=mlp EPOCHS=5 NPROC=1"
 	@echo "  make board                Launch TensorBoard on outputs/"
 	@echo "  make export               Export checkpoint to ONNX"
 	@echo "      EXP=mlp [CKPT=path] [OUT=path] [OPSET=17]"
@@ -69,6 +72,14 @@ train-docker:
 		--experiment $(EXP) \
 		--epochs $(EPOCHS) \
 		$(if $(BS),--batch-size $(BS),) \
+		$(if $(LR),--learning-rate $(LR),) \
+		$(if $(RESUME),--resume $(RESUME),)
+
+train-ddp:
+	NPROC=$(NPROC) bash scripts/train_ddp.sh \
+		--experiment $(EXP) \
+		--epochs $(EPOCHS) \
+		--batch-size $(BS) \
 		$(if $(LR),--learning-rate $(LR),) \
 		$(if $(RESUME),--resume $(RESUME),)
 

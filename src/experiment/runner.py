@@ -152,6 +152,7 @@ class ExperimentRunner:
 
     def cleanup(self) -> None:
         self.artifacts.close()
+        self.strategy.cleanup()
 
     # ---------- helpers ----------
 
