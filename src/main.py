@@ -3,10 +3,8 @@
 import argparse
 
 from config import TrainConfig
-from experiment.runner import ExperimentRunner
+from framework import ExperimentRunner, build_strategy, set_seed
 from registry import EXPERIMENTS
-from training.strategy import build_strategy
-from utils.seed import set_seed
 
 
 def parse_args() -> argparse.Namespace:
