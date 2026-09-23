@@ -21,6 +21,11 @@
   - `tests/test_regression.py`：`mlp` + `deep_convnet` 的精度基线
   - 阈值宽松（防崩不防微调）
   - `make test-regression`：50 秒
+- [x] **第 32 步**：框架边界
+  - `src/framework/__init__.py`：re-export 框架公开 API
+  - `main.py` 改用 `from framework import ...`
+  - 不改行为，不深层解耦（`ExperimentRunner` 仍 import 应用层）
+  - 未来拆 repo 从这层切
 
 **测试金字塔**：
 - 单元：41 passed（3 秒）

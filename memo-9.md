@@ -6,7 +6,7 @@
 
 ---
 
-## 一、本阶段做了什么（第 29-31 步）
+## 一、本阶段做了什么（第 29-32 步）
 
 ### 第 29 步：版本号单一来源
 
@@ -85,6 +85,61 @@ BASELINES = [
 **踩坑**：测试用了 `TrainConfig` 默认 lr（1e-2），而不是 `EXPERIMENTS` 的（`deep_convnet` 是 0.1）。
 
 **修法**：从 `registry.EXPERIMENTS` 查默认 lr。
+
+---
+
+### 第 32 步：框架边界（半小时）
+
+**问题**：`framework`（`utils/` / `strategy.py` / `runner.py` / `train.py`）
+和 `application`（`models/` / `data/` / `main.py`）混在一起，未来想拆 repo 没有边界。
+
+**探索过的方案**：
+
+| 方案 | 结论 |
+|---|---|
+| 拆多个 git repo | ❌ 只有 1 个项目时拆，是"为未来设计"，大概率设计错 |
+| Monorepo（多包） | ⚠️ 等第二个项目出现再说 |
+| **加 `framework/__init__.py` re-export** | ✅ 半小时，0 成本，边界清晰 |
+
+**做了什么**：
+
+- 新建 `src/framework/__init__.py`，re-export 框架的公开 API
+- `main.py` 改成 `from framework import ...`
+- 不改任何行为
+
+**不做深层解耦的原因**：
+
+- `ExperimentRunner` 现在还 import `registry` / `data.datasets`（应用层）
+- 真正的反转依赖是更大的重构
+- **现在加这层只是"声明意图"**，不是"完成分离"
+
+**关键判断**：**框架和应用要分离——但用"边界"分离，不是用"repo"分离。**
+
+**未来真要拆 repo**：
+
+```bash
+git subtree split -P src/framework -b framework-branch
+```
+
+**Rule of Three**：等**第二个项目**出现，再决定要不要拆。
+
+**教训**：
+
+> **过早抽象 = 技术债。**  
+> **边界可以先声明，物理拆分必须等时机。**
+
+---
+
+## 一句话
+
+> **本阶段把"能测"变成"知道什么时候会崩"。**
+
+- 单元测试 → 组件不坏
+- 集成测试 → 流程能跑
+- 回归测试 → 精度不崩
+- 框架边界 → 未来可拆
+
+**重构时的底气，来自这三层防线 + 一条边界。**
 
 ---
 
