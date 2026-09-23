@@ -23,10 +23,14 @@
 
 ## 打磨阶段
 
-- [ ] 版本号单一来源（`importlib.metadata`）
+- [x] 版本号单一来源（`importlib.metadata`）
+- [x] 集成测试（训练 1 步不报错）
+- [x] 回归测试（精度不低于基线）
+- [ ] CHANGELOG.md（Keep a Changelog 格式）
+- [ ] 覆盖率报告（pytest-cov）
+- [ ] CI 矩阵（Python 3.12 + 3.13）
+- [ ] API 文档（mkdocs / pdoc）
 - [ ] `setuptools-scm` 从 git tag 自动生成版本（可选）
-- [ ] 集成测试（训练 1 步不报错）
-- [ ] 回归测试（精度不低于基线）
 
 ## 算法方向
 

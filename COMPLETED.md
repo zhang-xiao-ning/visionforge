@@ -3,6 +3,30 @@
 已完成的工作记录。按时间倒序。
 
 ---
+
+## v0.1.1 — 2026-09-23
+
+### 阶段 10：工程打磨（第 29-31 步）
+
+- [x] **第 29 步**：版本号单一来源
+  - `src/__init__.py` 用 `importlib.metadata` 读版本
+  - 只改 `pyproject.toml`，`__version__` 自动同步
+  - 加 `tests/test_version.py`（3 个测试）
+- [x] **第 30 步**：`num_train` 参数 + 集成测试
+  - CLI 加 `--num-train`
+  - `ExperimentRunner` 透传
+  - 集成测试（`tests/test_integration.py`）：训练 + 恢复训练
+  - `make test-integration`：1 分钟
+- [x] **第 31 步**：回归测试
+  - `tests/test_regression.py`：`mlp` + `deep_convnet` 的精度基线
+  - 阈值宽松（防崩不防微调）
+  - `make test-regression`：50 秒
+
+**测试金字塔**：
+- 单元：41 passed（3 秒）
+- 集成：2 passed（1 分钟）
+- 回归：2 passed（50 秒）
+
 ## v0.1.0 — 2026-09-22
 
 ### 阶段 9：架构重构 + DDP（第 28 步）
