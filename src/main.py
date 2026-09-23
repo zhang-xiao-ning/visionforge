@@ -32,6 +32,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--amp", action="store_true", help="enable mixed precision (CUDA only)")
 
+    parser.add_argument(
+        "--num-train", type=int, default=None, help="number of training samples (default: all)"
+    )
+
     return parser.parse_args()
 
 
@@ -65,6 +69,7 @@ def main() -> None:
         batch_size=args.batch_size,
         strategy=strategy,
         resume_path=args.resume,
+        num_train=args.num_train,
     )
     try:
         runner.run()

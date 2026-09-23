@@ -22,7 +22,7 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from config import TrainConfig, device
+from config import NUM_TRAIN, TrainConfig, device
 from data.datasets import build_loaders
 from experiment.artifacts import RunArtifacts
 from registry import EXPERIMENTS
@@ -59,11 +59,13 @@ class ExperimentRunner:
         resume_path: str | None = None,
         outputs_dir: Path | None = None,
         checkpoints_dir: Path | None = None,
+        num_train: int | None = None,
     ) -> None:
         self.cfg = cfg
         self.dataset_name = dataset_name
         self.batch_size = batch_size
         self.resume_path = resume_path
+        self.num_train = num_train
         self.strategy = strategy if strategy is not None else build_strategy()
 
         self.artifacts = RunArtifacts.create(
@@ -81,6 +83,7 @@ class ExperimentRunner:
         self.optimizer = self._build_optimizer()
         self.scheduler = _build_scheduler(self.optimizer, cfg)
         self.start_epoch, self.best_acc = self._maybe_resume()
+        self.num_train = num_train
 
     # ---------- construction ----------
 
@@ -88,6 +91,7 @@ class ExperimentRunner:
         return build_loaders(
             name=self.dataset_name,
             batch_size=self.batch_size,
+            num_train=self.num_train if self.num_train is not None else NUM_TRAIN,
             strategy=self.strategy,
         )
 

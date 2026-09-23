@@ -106,6 +106,11 @@ make train-ddp EXP=vit EPOCHS=10 NPROC=2
 docker compose --profile train build train           # one-time
 make train-docker EXP=mlp EPOCHS=1
 ```
+### Quick debug (small subset)
+
+```bash
+uv run python src/main.py --experiment mlp --epochs 1 --num-train 1000
+```
 
 ### Full CLI argument list
 
@@ -125,6 +130,7 @@ make train-docker EXP=mlp EPOCHS=1
 | `--early-stop-patience` | Early stopping patience | `0` (disabled) |
 | `--resume` | Resume from checkpoint path | none |
 | `--amp` | Enable mixed precision (CUDA only) | off |
+| `--num-train` | Number of training samples (default: all) | none |
 
 ### Environment variables
 

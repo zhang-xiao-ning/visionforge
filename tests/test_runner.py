@@ -59,3 +59,27 @@ def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
     runner.cleanup()
 
     assert runner.artifacts.ckpt_path.exists()
+
+
+def test_runner_passes_num_train_to_build_loaders(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, int] = {}
+
+    def fake_build_loaders(name: str, batch_size: int, num_train: int, **kwargs):
+        captured["num_train"] = num_train
+        return _fake_build_loaders(name, batch_size)
+
+    monkeypatch.setattr("experiment.runner.build_loaders", fake_build_loaders)
+
+    cfg = TrainConfig(experiment="mlp", epochs=1)
+    runner = ExperimentRunner(
+        cfg=cfg,
+        dataset_name="cifar10",
+        batch_size=4,
+        strategy=SingleDeviceStrategy(),
+        outputs_dir=tmp_path / "outputs",
+        checkpoints_dir=tmp_path / "checkpoints",
+        num_train=128,
+    )
+    runner.cleanup()
+
+    assert captured["num_train"] == 128

@@ -2,7 +2,7 @@
 # visionforge
 # ============================================================
 
-.PHONY: help install install-hooks test lint format train train-docker train-ddp board export serve ci clean
+.PHONY: help install install-hooks test test-integration lint format train train-docker train-ddp board export serve ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -22,6 +22,7 @@ help:
 	@echo "  make install              uv sync"
 	@echo "  make install-hooks        Install git pre-commit hooks"
 	@echo "  make test                 uv run pytest"
+	@echo "  make test-integration     Run integration tests (requires real CIFAR-10)"
 	@echo "  make lint                 uv run ruff + mypy"
 	@echo "  make format               uv run ruff format"
 	@echo "  make train                uv run train"
@@ -47,6 +48,9 @@ install-hooks:
 
 test:
 	uv run pytest -v
+
+test-integration:
+	RUN_INTEGRATION=1 uv run pytest tests/test_integration.py -v
 
 ci:
 	bash scripts/ci.sh
