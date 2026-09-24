@@ -30,7 +30,7 @@
 
 ### Commit 1：`TrainingStrategy`
 
-- `src/training/strategy.py`
+- `../src/training/strategy.py`
 - 接口：`wrap_model` / `make_*_sampler` / `is_main_process` / `set_epoch` / `cleanup`
 - 实现：`SingleDeviceStrategy` + `DDPStrategy`
 - `build_strategy()`：自动检测 `RANK` / `WORLD_SIZE`
@@ -38,14 +38,14 @@
 
 ### Commit 2：`RunArtifacts`
 
-- `src/experiment/artifacts.py`
+- `../src/experiment/artifacts.py`
 - `RunArtifacts.create()`：一次性建路径 + logger + recorder + writer
 - DDP 时 `is_main=False` → 只写 rank 0
 - **只加文件，不改现有代码**
 
 ### Commit 3：`ExperimentRunner` + `main.py` 切换
 
-- `src/experiment/runner.py`
+- `../src/experiment/runner.py`
 - 把 `run_experiment` 的 17 件事拆成方法
 - `main.py`：从 200 行减到 90 行
 - 数值**逐位一致**验证通过
@@ -59,8 +59,8 @@
 
 ### Commit 5：DDP 脚本 + 4070 验证
 
-- `scripts/train_ddp.sh`：torchrun 启动
-- `Makefile` 加 `train-ddp`
+- `../scripts/train_ddp.sh`：torchrun 启动
+- `../Makefile` 加 `train-ddp`
 - 4070 上 `NPROC=1 make train-ddp EXP=mlp EPOCHS=1` ✅
 - 可复现性验证：跑两次，数值**逐位一致**
 

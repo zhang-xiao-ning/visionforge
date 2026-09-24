@@ -18,16 +18,16 @@
 
 | 文件 | 函数数 |
 |---|---|
-| `src/data/transforms.py` | 2 |
-| `src/data/cifar10.py` | 1 |
-| `src/data/datasets.py` | 1 |
-| `src/utils/logger.py` | 3 |
-| `src/utils/seed.py` | 1 |
-| `src/utils/env.py` | 2 |
-| `src/training/evaluator.py` | 1 |
-| `src/training/train.py` | 2 |
+| `../src/data/transforms.py` | 2 |
+| `../src/data/cifar10.py` | 1 |
+| `../src/data/datasets.py` | 1 |
+| `../src/utils/logger.py` | 3 |
+| `../src/utils/seed.py` | 1 |
+| `../src/utils/env.py` | 2 |
+| `../src/training/evaluator.py` | 1 |
+| `../src/training/train.py` | 2 |
 | `src/models/*.py` | 各 2 |
-| `src/main.py` | 5 |
+| `../src/main.py` | 5 |
 
 **关键类型：**
 
@@ -66,9 +66,9 @@ def train(
 
 | 文件 | 测试内容 |
 |---|---|
-| `tests/test_evaluator.py` | `evaluate` 返回 float、范围、恢复 train 模式 |
-| `tests/test_trainer.py` | 训练 1 epoch、权重更新、scheduler 衰减、early stopping |
-| `tests/test_logger.py` | CSV 表头、写入、append 模式、无 lr |
+| `../tests/test_evaluator.py` | `evaluate` 返回 float、范围、恢复 train 模式 |
+| `../tests/test_trainer.py` | 训练 1 epoch、权重更新、scheduler 衰减、early stopping |
+| `../tests/test_logger.py` | CSV 表头、写入、append 模式、无 lr |
 
 **总量：**
 
@@ -103,7 +103,7 @@ def train(
    USE_GPU = os.environ.get("USE_GPU", "true").lower() == "true"
    ```
 
-2. `tests/conftest.py`：在 import 前强制 CPU
+2. `../tests/conftest.py`：在 import 前强制 CPU
 
    ```python
    import os
@@ -135,7 +135,7 @@ def train(
 
 ### 第 23 步：README 完善（B2）
 
-重写 `README.md`，新增：
+重写 `../README.md`，新增：
 
 - 一句话介绍
 - 环境要求 + 安装

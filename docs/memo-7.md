@@ -40,8 +40,8 @@ RUN pip install --no-cache-dir \
     "numpy<2" \
     pillow
 
-COPY src/ ./src/
-COPY pyproject.toml ./
+COPY ../src ./src/
+COPY ../pyproject.toml ./
 
 ENV PYTHONPATH=/app/src
 

@@ -136,8 +136,8 @@ RUN pip install --no-cache-dir \
     "onnxruntime<1.20" \
     "numpy<2"
 
-COPY src/ ./src/
-COPY exports/ ./exports/
+COPY ../src ./src/
+COPY ../exports ./exports/
 
 ENV PYTHONPATH=/app/src
 ENV ONNX_PATH=/app/exports/mlp.onnx

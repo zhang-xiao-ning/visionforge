@@ -20,7 +20,7 @@ scripts/ci.sh                # 平台无关的 CI 脚本
 .github/workflows/ci.yml     # GitHub Actions 配置
 ```
 
-**`scripts/ci.sh` 的关键设计**：
+**`../scripts/ci.sh` 的关键设计**：
 
 ```bash
 #!/usr/bin/env bash
@@ -99,11 +99,11 @@ Total duration: 5m 35s
 |---|---|---|
 | GitHub 仓库名 | `my_test_project` | `visionforge` |
 | Gitee 仓库名 | `my_test_project` | `visionforge` |
-| `pyproject.toml` 的 `name` | `my-test-project` | `visionforge` |
-| `docker-compose.yml` 的 `image` | `my-test-project-serve` | `visionforge-serve` |
-| `docker-compose.yml` 的 `container_name` | `my-test-project-api` | `visionforge-api` |
-| `src/serving/api.py` 的 `FastAPI(title=...)` | `my_test_project inference` | `visionforge inference` |
-| `README.md` 标题 | `My Test Project` | `VisionForge` |
+| `../pyproject.toml` 的 `name` | `my-test-project` | `visionforge` |
+| `../docker-compose.yml` 的 `image` | `my-test-project-serve` | `visionforge-serve` |
+| `../docker-compose.yml` 的 `container_name` | `my-test-project-api` | `visionforge-api` |
+| `../src/serving/api.py` 的 `FastAPI(title=...)` | `my_test_project inference` | `visionforge inference` |
+| `../README.md` 标题 | `My Test Project` | `VisionForge` |
 | `src/__init__.py` docstring | — | `VisionForge: ...` |
 | 本地目录名 | `my_test_project` | `visionforge` |
 | WSL 目录名 | `my_test_project` | `visionforge` |
@@ -113,7 +113,7 @@ Total duration: 5m 35s
 - 所有 `import`：用的是 `from models.xxx` / `from data.xxx`，**基于 `src` 目录**，和顶层包名无关
 - 代码逻辑
 - 测试
-- `Makefile`（用相对路径）
+- `../Makefile`（用相对路径）
 - `utils/` / `training/` / `export/` / `serving/`
 
 ### 教训
@@ -279,12 +279,12 @@ README 顶部的 CI 徽章：
 
 **解**：切到 GitHub Actions（公开仓库完全免费）。
 
-### 坑 2：`.workflow/` 和 `.github/workflows/` 混淆
+### 坑 2：`.workflow/` 和 `../.github/workflows` 混淆
 
 **症状**：
 
 - Gitee Go 用 `.workflow/ci.yml`
-- GitHub Actions 用 `.github/workflows/ci.yml`
+- GitHub Actions 用 `../.github/workflows/ci.yml`
 
 **教训**：**不同平台配置文件放在不同目录**，不能混。
 
@@ -322,7 +322,7 @@ PyCharm 里也要重新打开项目。
 
 **症状**：CI 5m30s，日志显示下载 `torch (720.5MiB)` + 一堆 `nvidia-*-cu12` 库。
 
-**原因**：`uv.lock` 锁定了 CUDA 版 torch，GitHub Actions runner 无 GPU，白下。
+**原因**：`../uv.lock` 锁定了 CUDA 版 torch，GitHub Actions runner 无 GPU，白下。
 
 **解**：CI 里 `export UV_TORCH_BACKEND=cpu` + `rm -f uv.lock` 强制重新解析。
 

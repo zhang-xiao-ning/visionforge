@@ -269,6 +269,10 @@ visionforge/
 ├── checkpoints/                 # weights (not in git)
 ├── outputs/                     # logs/CSV/JSON (not in git)
 ├── exports/                     # ONNX models (not in git)
+├── docs/
+│   ├── TODO.md
+│   ├── COMPLETED.md
+│   └── memo-1.md ~ memo-9.md
 ├── docker-compose.yml
 ├── .dockerignore
 ├── Makefile
@@ -276,9 +280,6 @@ visionforge/
 ├── .pre-commit-config.yaml
 ├── .gitignore
 ├── README.md
-├── TODO.md
-├── COMPLETED.md
-├── memo-1.md ~ memo-8.md
 ├── pack.sh
 └── dump_code.sh
 ```

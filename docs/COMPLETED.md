@@ -10,15 +10,15 @@
 
 - [x] **第 29 步**：版本号单一来源
   - `src/__init__.py` 用 `importlib.metadata` 读版本
-  - 只改 `pyproject.toml`，`__version__` 自动同步
-  - 加 `tests/test_version.py`（3 个测试）
+  - 只改 `../pyproject.toml`，`__version__` 自动同步
+  - 加 `../tests/test_version.py`（3 个测试）
 - [x] **第 30 步**：`num_train` 参数 + 集成测试
   - CLI 加 `--num-train`
   - `ExperimentRunner` 透传
-  - 集成测试（`tests/test_integration.py`）：训练 + 恢复训练
+  - 集成测试（`../tests/test_integration.py`）：训练 + 恢复训练
   - `make test-integration`：1 分钟
 - [x] **第 31 步**：回归测试
-  - `tests/test_regression.py`：`mlp` + `deep_convnet` 的精度基线
+  - `../tests/test_regression.py`：`mlp` + `deep_convnet` 的精度基线
   - 阈值宽松（防崩不防微调）
   - `make test-regression`：50 秒
 - [x] **第 32 步**：框架边界
@@ -41,7 +41,7 @@
 - [x] **Commit 3**：`ExperimentRunner` 编排 + `main.py` 精简（200 → 90 行）
 - [x] **Commit 4**：`strategy` 接入 `datasets.py` / `train.py`（向后兼容）
 - [x] **Commit 5**：DDP 脚本 + Makefile + 4070 验证
-  - `scripts/train_ddp.sh`
+  - `../scripts/train_ddp.sh`
   - `make train-ddp EXP=mlp EPOCHS=1 NPROC=1`
   - 4070 上跑通，可复现性验证通过
 - [x] **Commit 6**：文档更新（memo-8 + COMPLETED + TODO）
@@ -56,8 +56,8 @@
 ### 阶段 8：训练镜像（第 27 步）
 
 - [x] **第 27 步**：训练 Docker 镜像
-  - `docker/Dockerfile.train`（CUDA 12.1 + torch 2.2.2+cu121）
-  - `docker-compose.yml` 加 `train` service（`profiles: [train]`）
+  - `../docker/Dockerfile.train`（CUDA 12.1 + torch 2.2.2+cu121）
+  - `../docker-compose.yml` 加 `train` service（`profiles: [train]`）
   - GPU 直通：`deploy.resources.reservations.devices`
   - 卷挂载：`datasets:ro` / `checkpoints` / `outputs`
   - 在 4070 WSL2 上验证：`using device: cuda`，1 epoch ~6 秒
@@ -69,9 +69,9 @@
 ### 阶段 7：CI（第 26 步）
 
 - [x] **第 26 步**：CI 自动化
-  - `scripts/ci.sh`：平台无关的 CI 脚本
+  - `../scripts/ci.sh`：平台无关的 CI 脚本
   - `make ci`：本地跑完整 CI 流程
-  - `.github/workflows/ci.yml`：GitHub Actions
+  - `../.github/workflows/ci.yml`：GitHub Actions
   - 从 Gitee Go 切到 GitHub Actions（免费、无额度限制）
   - 首次 push 成功，耗时 5m35s（冷缓存）
   - **CI 时长从 5m30s 优化到 45s**（CPU torch + 删 lock）
@@ -80,7 +80,7 @@
 
 - [x] `my_test_project` → `visionforge`
   - GitHub / Gitee 仓库改名
-  - `pyproject.toml` / `docker-compose.yml` / `README.md` 同步
+  - `../pyproject.toml` / `../docker-compose.yml` / `../README.md` 同步
   - 本地目录和 WSL 目录改名
   - 由于 import 用的是"脚本式"，代码零改动
 
@@ -89,20 +89,20 @@
 ### 阶段 4：DevOps 闭环（第 23-25 步）
 
 - [x] **第 23 步**：ONNX 导出
-  - `src/export/onnx_export.py`
+  - `../src/export/onnx_export.py`
   - PyTorch vs ONNX 输出验证（`max_diff < 1e-5`）
   - `make export EXP=mlp` / `make export EXP=deep_convnet`
   - 注意：`vit` 导出留待以后（Mac 上没有 vit checkpoint）
 - [x] **第 24 步**：FastAPI 推理服务
-  - `src/serving/api.py`（`/health` + `/predict`）
-  - `src/serving/inference.py`（ONNX Runtime 推理）
-  - `src/serving/schema.py`（Pydantic schema）
+  - `../src/serving/api.py`（`/health` + `/predict`）
+  - `../src/serving/inference.py`（ONNX Runtime 推理）
+  - `../src/serving/schema.py`（Pydantic schema）
   - `make serve`
   - 浏览器 `http://localhost:8000/docs` 自动文档
 - [x] **第 25 步**：Docker 部署
-  - `docker/Dockerfile.serve`（CPU torch + 清华源 + `numpy<2`）
-  - `docker-compose.yml`
-  - `.dockerignore`
+  - `../docker/Dockerfile.serve`（CPU torch + 清华源 + `numpy<2`）
+  - `../docker-compose.yml`
+  - `../.dockerignore`
   - 在 WSL2 上构建运行
   - **完整闭环打通**：Mac → SSH 隧道 → 阿里云中转 → WSL2 → Docker → ONNX 推理
 
@@ -125,17 +125,17 @@
 
 ### 阶段 2：项目外观（第 11–13 步）
 
-- [x] **第 11 步**：`pyproject.toml` + `README.md` + `.gitignore`
+- [x] **第 11 步**：`../pyproject.toml` + `../README.md` + `../.gitignore`
   - Python 版本全对齐 3.12（`requires-python` / `ruff` / `mypy`）
   - 使用 `[dependency-groups]`（PEP 735，uv 推荐）
-  - 清理 `.idea/`、`__pycache__/`、`*.egg-info/` 出 git
-  - 保留 `uv.lock` 在 git 中
-- [x] **第 12 步**：`Makefile`
+  - 清理 `../.idea`、`__pycache__/`、`*.egg-info/` 出 git
+  - 保留 `../uv.lock` 在 git 中
+- [x] **第 12 步**：`../Makefile`
   - `make install` / `test` / `lint` / `format` / `train` / `clean` / `help`
   - 用 `uv run` 保证环境一致
 - [x] **第 13 步**：暴露公共 API
   - `src/__init__.py` 定义 `__all__` 和 `__version__`
-  - `src/py.typed` 标记类型
+  - `../src/py.typed` 标记类型
 
 ### 阶段 3：训练增强（第 14–15 步）
 
@@ -162,7 +162,7 @@
   - import 排序、`%` → f-string、格式化
   - `ruff check` 全过
 - [x] **第 18 步**：pre-commit 本地 hook
-  - `.pre-commit-config.yaml` 用 local 模式（不联网）
+  - `../.pre-commit-config.yaml` 用 local 模式（不联网）
   - ruff + ruff-format + mypy
 - [x] **第 19 步**：`make install-hooks`
   - 新人 clone 后一句命令装 hook

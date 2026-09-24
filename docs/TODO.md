@@ -7,11 +7,11 @@
   - [x] 自动跑 ruff + mypy
   - [x] README 加 CI 徽章（待加）
 - [x] Docker（推理镜像）
-  - [x] `docker/Dockerfile.serve`
-  - [x] `.dockerignore`
+  - [x] `../docker/Dockerfile.serve`
+  - [x] `../.dockerignore`
 - [x] Docker（训练镜像）
-  - [x] `docker/Dockerfile.train`（GPU 版）
-  - [x] 支持挂载 `datasets/` 和 `checkpoints/`
+  - [x] `../docker/Dockerfile.train`（GPU 版）
+  - [x] 支持挂载 `../datasets` 和 `../checkpoints`
   - [x] 验证：`docker run` 训练 1 epoch
 - [x] 分布式训练 DDP
   - [x] `DistributedDataParallel` 支持

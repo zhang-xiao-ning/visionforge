@@ -12,7 +12,7 @@
 
 **问题**：两处版本号手动同步
 
-- `pyproject.toml`：`version = "0.1.1"`
+- `../pyproject.toml`：`version = "0.1.1"`
 - `src/__init__.py`：`__version__ = "0.1.1"`
 
 **改法**：`__init__.py` 从 `importlib.metadata` 读
@@ -26,7 +26,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 ```
 
-**收益**：只改 `pyproject.toml`，`__version__` 自动同步。
+**收益**：只改 `../pyproject.toml`，`__version__` 自动同步。
 
 **验证**：
 ```bash
@@ -52,7 +52,7 @@ uv run python src/main.py --experiment mlp --epochs 1 --num-train 1000
 - `main.py::parse_args` 加 `--num-train`
 - README 加参数说明
 
-**集成测试**（`tests/test_integration.py`）：
+**集成测试**（`../tests/test_integration.py`）：
 
 - `test_train_one_epoch_on_real_data`：128 张图跑 1 epoch
 - `test_runner_saves_and_resumes`：跑 + 恢复训练
@@ -173,7 +173,7 @@ make ci                 # 完整 CI（单元测试 + lint + mypy）
 
 ### 1. 单一来源原则
 
-- 版本号只在 `pyproject.toml` 定义
+- 版本号只在 `../pyproject.toml` 定义
 - 其它地方**读**，不**写**
 
 **任何"两处同步"的东西，早晚不一致。**

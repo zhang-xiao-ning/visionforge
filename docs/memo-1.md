@@ -384,7 +384,7 @@ datasets/       数据（不进 git）
 
 - `../src` layout（避免 import 冲突）
 - `../pyproject.toml` 统一配置
-- `Makefile` / `scripts/` 常用命令
+- `../Makefile` / `../scripts` 常用命令
 
 ---
 
@@ -840,7 +840,7 @@ datasets/       数据（不进 git）
 
 - `../src` layout（避免 import 冲突）
 - `../pyproject.toml` 统一配置
-- `Makefile` / `scripts/` 常用命令
+- `../Makefile` / `../scripts` 常用命令
 
 ---
 
