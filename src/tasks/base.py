@@ -21,6 +21,10 @@ class Task(ABC):
     # Which metric from `eval_step` should be used for best-model selection
     primary_metric: str = "loss"
 
+    # Whether a larger primary_metric is better (True for accuracy,
+    # False for loss / perplexity)
+    higher_is_better: bool = True
+
     @abstractmethod
     def train_step(
         self,

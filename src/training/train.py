@@ -36,6 +36,10 @@ def train(
     epochs_no_improve = 0
     last_epoch = start_epoch - 1
 
+    # For "lower is better" tasks, initialize best_acc to +inf
+    if not task.higher_is_better and best_acc == 0.0:
+        best_acc = float("inf")
+
     amp_enabled = use_amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
@@ -100,8 +104,15 @@ def train(
             log(f"  LR -> {optimizer.param_groups[0]['lr']:.6g}")
 
         if is_main():
-            if val_metric > best_acc:
+            if task.higher_is_better:
+                is_better = val_metric > best_acc
+            else:
+                is_better = val_metric < best_acc
+
+            if is_better:
                 best_acc = val_metric
+                # Snapshot weights to CPU to avoid holding a second copy
+                # on GPU. load_state_dict() will move them back to device.
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
                 epochs_no_improve = 0
             else:
