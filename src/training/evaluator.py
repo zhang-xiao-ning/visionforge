@@ -3,22 +3,29 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from runtime import DTYPE, device
+from tasks.base import Task
 
 
-def evaluate(model: nn.Module, loader: DataLoader) -> float:
-    """返回 accuracy (float, 0~1)。"""
+def evaluate(
+    model: nn.Module,
+    loader: DataLoader,
+    task: Task,
+) -> dict[str, float]:
+    """Aggregate task.eval_step over the loader. Returns averaged metrics."""
     model.eval()
-    num_correct = 0
-    num_samples = 0
+
+    totals: dict[str, float] = {}
+    n_batches = 0
 
     with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device=device, dtype=DTYPE)
-            y = y.to(device=device, dtype=torch.long)
-            scores = model(x)
-            _, preds = scores.max(1)
-            num_correct += (preds == y).sum().item()
-            num_samples += preds.size(0)
+        for batch in loader:
+            metrics = task.eval_step(model, batch, device, DTYPE)
+            for k, v in metrics.items():
+                totals[k] = totals.get(k, 0.0) + v
+            n_batches += 1
 
     model.train()
-    return num_correct / num_samples
+
+    if n_batches == 0:
+        return {k: 0.0 for k in totals}
+    return {k: v / n_batches for k, v in totals.items()}

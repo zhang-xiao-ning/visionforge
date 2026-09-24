@@ -1,6 +1,7 @@
 import torch
 import torch.optim as optim
 
+from tasks.classification import ClassificationTask
 from training.train import train
 
 
@@ -11,6 +12,7 @@ def test_train_runs_one_epoch(dummy_model, dummy_loader):
         optimizer,
         dummy_loader,
         dummy_loader,
+        ClassificationTask(),
         epochs=1,
     )
     assert "best_acc" in result
@@ -23,7 +25,7 @@ def test_train_updates_weights(dummy_model, dummy_loader):
     w_before = dummy_model.fc.weight.detach().clone()
 
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.1)
-    train(dummy_model, optimizer, dummy_loader, dummy_loader, epochs=1)
+    train(dummy_model, optimizer, dummy_loader, dummy_loader, ClassificationTask(), epochs=1)
 
     w_after = dummy_model.fc.weight.detach().clone()
     assert not torch.equal(w_before, w_after)
@@ -36,6 +38,7 @@ def test_train_respects_epochs(dummy_model, dummy_loader):
         optimizer,
         dummy_loader,
         dummy_loader,
+        ClassificationTask(),
         epochs=3,
     )
     assert result["last_epoch"] == 3
@@ -50,6 +53,7 @@ def test_train_with_scheduler(dummy_model, dummy_loader):
         optimizer,
         dummy_loader,
         dummy_loader,
+        ClassificationTask(),
         epochs=2,
         scheduler=scheduler,
     )
@@ -65,6 +69,7 @@ def test_train_early_stopping(dummy_model, dummy_loader):
         optimizer,
         dummy_loader,
         dummy_loader,
+        ClassificationTask(),
         epochs=100,
         early_stop_patience=2,
     )

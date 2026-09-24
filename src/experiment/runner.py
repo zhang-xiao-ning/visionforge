@@ -27,6 +27,7 @@ from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
 from registry import EXPERIMENTS
 from runtime import NUM_TRAIN, device
+from tasks.classification import ClassificationTask
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy, build_strategy
 from training.train import train
@@ -67,6 +68,7 @@ class ExperimentRunner:
         self.batch_size = batch_size
         self.resume_path = resume_path
         self.num_train = num_train
+        self.task = ClassificationTask()
         self.strategy = strategy if strategy is not None else build_strategy(device)
 
         self.artifacts = RunArtifacts.create(
@@ -84,7 +86,6 @@ class ExperimentRunner:
         self.optimizer = self._build_optimizer()
         self.scheduler = _build_scheduler(self.optimizer, cfg)
         self.start_epoch, self.best_acc = self._maybe_resume()
-        self.num_train = num_train
 
     # ---------- construction ----------
 
@@ -138,6 +139,7 @@ class ExperimentRunner:
             self.optimizer,
             self.loader_train,
             self.loader_val,
+            self.task,
             epochs=self.cfg.epochs,
             scheduler=self.scheduler,
             early_stop_patience=self.cfg.early_stop_patience,
@@ -176,10 +178,12 @@ class ExperimentRunner:
     def _evaluate_test(self) -> float:
         if not self.artifacts.is_main:
             return 0.0
-        test_acc = evaluate(self.model, self.loader_test)
+        test_metrics = evaluate(self.model, self.loader_test, self.task)
+        test_metric = test_metrics[self.task.primary_metric]
         if self.artifacts.logger is not None:
-            self.artifacts.logger.info("Test accuracy = %.4f", test_acc)
-        return test_acc
+            metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())
+            self.artifacts.logger.info("Test %s", metrics_str)
+        return test_metric
 
     def _save_checkpoint(self, result: dict[str, float | int]) -> None:
         if not self.artifacts.is_main:

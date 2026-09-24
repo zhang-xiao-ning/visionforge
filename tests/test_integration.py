@@ -19,6 +19,7 @@ from data.datasets import build_loaders
 from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from models.mlp import MLP
+from tasks.classification import ClassificationTask
 from training.strategy import SingleDeviceStrategy
 from training.train import train
 from utils.path import DATASETS_PATH
@@ -40,7 +41,7 @@ def test_train_one_epoch_on_real_data() -> None:
     model = MLP()
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
-    result = train(model, optimizer, loader_train, loader_val, epochs=1)
+    result = train(model, optimizer, loader_train, loader_val, ClassificationTask(), epochs=1)
 
     assert result["last_epoch"] == 1
     assert 0.0 <= result["best_acc"] <= 1.0

@@ -2,13 +2,13 @@ import logging
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from runtime import DTYPE, PRINT_EVERY, device
+from tasks.base import Task
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy
 from utils.logger import CSVRecorder
@@ -19,6 +19,7 @@ def train(
     optimizer: optim.Optimizer,
     loader_train: DataLoader,
     loader_val: DataLoader,
+    task: Task,
     epochs: int = 1,
     scheduler: lr_scheduler.LRScheduler | None = None,
     early_stop_patience: int = 0,
@@ -31,11 +32,10 @@ def train(
     strategy: TrainingStrategy | None = None,
 ) -> dict[str, float | int]:
     model = model.to(device=device)
-    best_state = None
+    best_state: dict[str, torch.Tensor] | None = None
     epochs_no_improve = 0
     last_epoch = start_epoch - 1
 
-    # AMP 只在 CUDA 上真正生效，MPS / CPU 上自动退化为 float32
     amp_enabled = use_amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
 
@@ -57,16 +57,12 @@ def train(
         running_loss = 0.0
         n_batches = 0
 
-        for t, (x, y) in enumerate(loader_train):
+        for t, batch in enumerate(loader_train):
             model.train()
-            x = x.to(device=device, dtype=DTYPE)
-            y = y.to(device=device, dtype=torch.long)
-
             optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=amp_enabled):
-                scores = model(x)
-                loss = F.cross_entropy(scores, y)
+                loss = task.train_step(model, batch, device, DTYPE)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -78,24 +74,25 @@ def train(
             if t % PRINT_EVERY == 0:
                 log(f"Epoch {e}, Iter {t}, loss = {loss.item():.4f}")
 
-        avg_loss = running_loss / n_batches
+        avg_loss = running_loss / max(n_batches, 1)
         lr_now = optimizer.param_groups[0]["lr"]
 
-        # 只有主进程评估（简化版 DDP，避免每卡都跑一遍验证集）
         if is_main():
-            val_acc = evaluate(model, loader_val)
+            val_metrics = evaluate(model, loader_val, task)
         else:
-            val_acc = 0.0
+            val_metrics = {task.primary_metric: 0.0}
 
-        log(f"Epoch {e} done. avg_train_loss = {avg_loss:.4f}, val_acc = {val_acc:.4f}")
+        val_metric = val_metrics[task.primary_metric]
+        metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in val_metrics.items())
+        log(f"Epoch {e} done. avg_train_loss = {avg_loss:.4f}, {metrics_str}")
 
         if recorder is not None and is_main():
-            recorder.log(e, avg_loss, val_acc, lr_now)
+            recorder.log(e, avg_loss, val_metric, lr_now)
 
-        # TensorBoard
         if writer is not None and is_main():
             writer.add_scalar("loss/train", avg_loss, e)
-            writer.add_scalar("acc/val", val_acc, e)
+            for k, v in val_metrics.items():
+                writer.add_scalar(f"val/{k}", v, e)
             writer.add_scalar("lr", lr_now, e)
 
         if scheduler is not None:
@@ -103,8 +100,8 @@ def train(
             log(f"  LR -> {optimizer.param_groups[0]['lr']:.6g}")
 
         if is_main():
-            if val_acc > best_acc:
-                best_acc = val_acc
+            if val_metric > best_acc:
+                best_acc = val_metric
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
                 epochs_no_improve = 0
             else:
@@ -119,5 +116,5 @@ def train(
     if best_state is not None and is_main():
         model.load_state_dict(best_state)
 
-    log(f"Best val accuracy = {best_acc:.4f}")
+    log(f"Best {task.primary_metric} = {best_acc:.4f}")
     return {"best_acc": best_acc, "last_epoch": last_epoch}
