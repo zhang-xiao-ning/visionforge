@@ -21,7 +21,7 @@ from pathlib import Path
 
 from torch.utils.tensorboard import SummaryWriter
 
-from config import TrainConfig
+from experiment.config import TrainConfig
 from training.strategy import TrainingStrategy
 from utils.env import get_env_info
 from utils.logger import CSVRecorder, get_logger

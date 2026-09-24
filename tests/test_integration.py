@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 import torch.optim as optim
 
-from config import TrainConfig
 from data.datasets import build_loaders
+from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from models.mlp import MLP
 from training.strategy import SingleDeviceStrategy

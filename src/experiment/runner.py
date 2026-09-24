@@ -22,11 +22,11 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from config import NUM_TRAIN, device
 from data.datasets import build_loaders
 from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
 from registry import EXPERIMENTS
+from runtime import NUM_TRAIN, device
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy, build_strategy
 from training.train import train

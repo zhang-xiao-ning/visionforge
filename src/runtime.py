@@ -23,3 +23,7 @@ def get_device() -> torch.device:
     if torch.backends.mps.is_available() and torch.backends.mps.is_built():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+# Import-time snapshot. Resolved once, at import.
+device = get_device()

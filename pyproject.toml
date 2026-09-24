@@ -63,7 +63,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["config", "data", "models", "training", "utils"]
+known-first-party = ["data", "experiment", "framework", "models", "registry", "runtime", "training", "utils",]
 
 # ---------- mypy ----------
 [tool.mypy]

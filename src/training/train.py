@@ -8,7 +8,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from config import device, dtype, print_every
+from runtime import DTYPE, PRINT_EVERY, device
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy
 from utils.logger import CSVRecorder
@@ -59,7 +59,7 @@ def train(
 
         for t, (x, y) in enumerate(loader_train):
             model.train()
-            x = x.to(device=device, dtype=dtype)
+            x = x.to(device=device, dtype=DTYPE)
             y = y.to(device=device, dtype=torch.long)
 
             optimizer.zero_grad()
@@ -75,7 +75,7 @@ def train(
             running_loss += loss.item()
             n_batches += 1
 
-            if t % print_every == 0:
+            if t % PRINT_EVERY == 0:
                 log(f"Epoch {e}, Iter {t}, loss = {loss.item():.4f}")
 
         avg_loss = running_loss / n_batches

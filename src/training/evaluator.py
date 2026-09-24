@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from config import device, dtype
+from runtime import DTYPE, device
 
 
 def evaluate(model: nn.Module, loader: DataLoader) -> float:
@@ -13,7 +13,7 @@ def evaluate(model: nn.Module, loader: DataLoader) -> float:
 
     with torch.no_grad():
         for x, y in loader:
-            x = x.to(device=device, dtype=dtype)
+            x = x.to(device=device, dtype=DTYPE)
             y = y.to(device=device, dtype=torch.long)
             scores = model(x)
             _, preds = scores.max(1)

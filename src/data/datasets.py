@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader, Subset
 
-from config import BATCH_SIZE, NUM_TRAIN, device
 from data import cifar10
+from runtime import BATCH_SIZE, NUM_TRAIN, device
 from training.strategy import SingleDeviceStrategy, TrainingStrategy
 
 DATASET_REGISTRY = {
