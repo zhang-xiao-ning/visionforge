@@ -2,7 +2,7 @@
 # visionforge
 # ============================================================
 
-.PHONY: help install install-hooks test test-integration test-regression lint format train train-docker train-ddp board export serve ci clean
+.PHONY: help install install-hooks test test-integration test-regression lint format check train train-docker train-ddp board export serve ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -26,6 +26,7 @@ help:
 	@echo "  make test-regression      Run regression tests (accuracy baseline)"
 	@echo "  make lint                 uv run ruff + mypy"
 	@echo "  make format               uv run ruff format"
+	@echo "  make check                Run format + lint + test (dev workflow)"
 	@echo "  make train                uv run train"
 	@echo "      EXP=mlp EPOCHS=5 BS=128 LR=0.01 RESUME=path/to.pt"
 	@echo "  make train-docker         Train inside Docker (GPU)"
@@ -67,6 +68,8 @@ lint:
 format:
 	uv run ruff check src/ tests/ --fix
 	uv run ruff format src/ tests/
+
+check: format lint test
 
 train:
 	uv run python src/main.py \
