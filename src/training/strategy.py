@@ -84,20 +84,22 @@ class DDPStrategy(TrainingStrategy):
     Uses NCCL on CUDA, Gloo otherwise (CPU fallback for testing).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, device: torch.device) -> None:
+        self.device = device
+
         if not dist.is_initialized():
-            backend = "nccl" if torch.cuda.is_available() else "gloo"
+            backend = "nccl" if device.type == "cuda" else "gloo"
             dist.init_process_group(backend=backend)
 
         self.rank = dist.get_rank()
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self._train_sampler: DistributedSampler | None = None
 
-        if torch.cuda.is_available():
+        if device.type == "cuda":
             torch.cuda.set_device(self.local_rank)
 
     def wrap_model(self, model: nn.Module, device: torch.device) -> nn.Module:
-        if torch.cuda.is_available():
+        if device.type == "cuda":
             model = model.to(self.local_rank)
             return DDP(model, device_ids=[self.local_rank])
         return DDP(model)
@@ -121,8 +123,8 @@ class DDPStrategy(TrainingStrategy):
             dist.destroy_process_group()
 
 
-def build_strategy() -> TrainingStrategy:
+def build_strategy(device: torch.device) -> TrainingStrategy:
     """Auto-detect: torchrun sets RANK + WORLD_SIZE, otherwise single device."""
     if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
-        return DDPStrategy()
+        return DDPStrategy(device)
     return SingleDeviceStrategy()

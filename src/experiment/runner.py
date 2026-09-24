@@ -22,9 +22,10 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from config import NUM_TRAIN, TrainConfig, device
+from config import NUM_TRAIN, device
 from data.datasets import build_loaders
 from experiment.artifacts import RunArtifacts
+from experiment.config import TrainConfig
 from registry import EXPERIMENTS
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy, build_strategy
@@ -66,7 +67,7 @@ class ExperimentRunner:
         self.batch_size = batch_size
         self.resume_path = resume_path
         self.num_train = num_train
-        self.strategy = strategy if strategy is not None else build_strategy()
+        self.strategy = strategy if strategy is not None else build_strategy(device)
 
         self.artifacts = RunArtifacts.create(
             cfg=cfg,
@@ -167,6 +168,7 @@ class ExperimentRunner:
         logger.info("=" * 60)
         logger.info("Experiment: %s", self.cfg.experiment)
         logger.info("Dataset: %s", self.dataset_name)
+        logger.info("Device: %s", device)
         logger.info("Config: %s", self.cfg)
         logger.info(format_env_info())
         logger.info("=" * 60)

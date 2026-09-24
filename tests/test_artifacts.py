@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from config import TrainConfig
 from experiment.artifacts import RunArtifacts
+from experiment.config import TrainConfig
 from training.strategy import SingleDeviceStrategy
 
 

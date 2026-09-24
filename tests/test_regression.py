@@ -14,7 +14,7 @@ import os
 
 import pytest
 
-from config import TrainConfig
+from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from registry import EXPERIMENTS
 from training.strategy import SingleDeviceStrategy

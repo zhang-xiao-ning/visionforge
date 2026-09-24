@@ -52,5 +52,5 @@ def test_single_device_cleanup_is_noop() -> None:
 def test_build_strategy_returns_single_device_by_default(monkeypatch) -> None:
     monkeypatch.delenv("RANK", raising=False)
     monkeypatch.delenv("WORLD_SIZE", raising=False)
-    strategy = build_strategy()
+    strategy = build_strategy(torch.device("cpu"))
     assert isinstance(strategy, SingleDeviceStrategy)

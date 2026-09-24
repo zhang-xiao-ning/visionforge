@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from config import TrainConfig
+from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from training.strategy import SingleDeviceStrategy
 
