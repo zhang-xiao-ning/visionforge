@@ -25,6 +25,7 @@ from torch.optim import lr_scheduler
 from data.datasets import build_loaders
 from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
+from models.base import SetupContext
 from registry import EXPERIMENTS
 from runtime import NUM_TRAIN, device
 from tasks.classification import ClassificationTask
@@ -68,7 +69,6 @@ class ExperimentRunner:
         self.batch_size = batch_size
         self.resume_path = resume_path
         self.num_train = num_train
-        self.task = ClassificationTask()
         self.strategy = strategy if strategy is not None else build_strategy(device)
 
         self.artifacts = RunArtifacts.create(
@@ -81,8 +81,37 @@ class ExperimentRunner:
             checkpoints_dir=checkpoints_dir,
         )
 
-        self.loader_train, self.loader_val, self.loader_test = self._build_loaders()
-        self.model = self._build_model()
+        # TODO: this if-fork is a temporary shape.
+        # Captioning needs a data-dependent model (vocab_size from tokenizer),
+        # so it exposes a `setup(ctx)` classmethod that builds
+        # (model, task, loaders) together. Plain classifiers use the
+        # default path below. When a third setup-style model appears,
+        # extract this into experiment/builder.py.
+        model_cls, _ = EXPERIMENTS[self.cfg.experiment]
+
+        if hasattr(model_cls, "setup"):
+            ctx = SetupContext(
+                cfg=self.cfg,
+                dataset_name=self.dataset_name,
+                batch_size=self.batch_size,
+                num_train=self.num_train,
+            )
+            bundle = model_cls.setup(ctx)
+            self.model = self.strategy.wrap_model(bundle.model, device)
+            self.task = bundle.task
+            self.loader_train = bundle.loader_train
+            self.loader_val = bundle.loader_val
+            self.loader_test = bundle.loader_test
+        else:
+            self.loader_train, self.loader_val, self.loader_test = build_loaders(
+                name=self.dataset_name,
+                batch_size=self.batch_size,
+                num_train=self.num_train if self.num_train is not None else NUM_TRAIN,
+                strategy=self.strategy,
+            )
+            self.model = self._build_model()
+            self.task = ClassificationTask()
+
         self.optimizer = self._build_optimizer()
         self.scheduler = _build_scheduler(self.optimizer, cfg)
         self.start_epoch, self.best_acc = self._maybe_resume()

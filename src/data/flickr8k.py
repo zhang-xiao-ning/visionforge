@@ -160,6 +160,7 @@ def build_captioning_loaders(
     num_workers: int = 0,
     max_len: int = 64,
     image_size: int = 224,
+    num_train: int | None = None,
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """Build train / val / test loaders from a Flickr8k root dir."""
     image_dir = root / "Flicker8k_Dataset"
@@ -174,6 +175,9 @@ def build_captioning_loaders(
     train_names = load_split(text_dir / "Flickr_8k.trainImages.txt")
     val_names = load_split(text_dir / "Flickr_8k.devImages.txt")
     test_names = load_split(text_dir / "Flickr_8k.testImages.txt")
+
+    if num_train is not None:
+        train_names = train_names[:num_train]
 
     train_tf = _train_transform(image_size)
     eval_tf = _eval_transform(image_size)

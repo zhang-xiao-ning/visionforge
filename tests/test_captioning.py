@@ -106,3 +106,24 @@ def test_tie_weights_false_untied() -> None:
         tie_weights=False,
     )
     assert model.lm_head.weight is not model.token_embed.weight
+
+
+def test_setup_returns_bundle() -> None:
+    """setup() returns (model, task, loaders) with consistent vocab."""
+    pytest.importorskip("data.flickr8k")  # skip if no data
+
+    from experiment.config import TrainConfig
+    from models.base import SetupContext
+
+    cfg = TrainConfig(experiment="captioning", epochs=1)
+    ctx = SetupContext(
+        cfg=cfg,
+        dataset_name="flickr8k",
+        batch_size=8,
+        num_train=10,
+    )
+    bundle = CaptioningModel.setup(ctx)
+
+    assert isinstance(bundle.model, CaptioningModel)
+    assert bundle.model.lm_head.out_features == 50257  # tiktoken vocab
+    assert bundle.task is not None
