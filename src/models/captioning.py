@@ -161,14 +161,18 @@ class CaptioningModel(nn.Module):
         tgt = tgt + self.pos_embed_dec[:, :L]
 
         tgt_mask = self._causal_mask(L, images.device)
-        tgt_key_padding_mask = input_ids == self.pad_id  # True = ignore
+        tgt_mask = self._causal_mask(L, images.device)
 
+        # NOTE: tgt_key_padding_mask is intentionally omitted.
+        # tiktoken sets pad_id == bos_id == eos_id, so masking positions
+        # where input_ids == pad_id would also mask BOS, causing NaN in
+        # attention when the whole sequence is masked. Since the loss
+        # already ignores padded targets (-100), we simply skip this mask.
         out = self.decoder(
             tgt,
             memory,
             tgt_mask=tgt_mask,
-            tgt_key_padding_mask=tgt_key_padding_mask,
-        )  # (B, L, d_model)
+        )
         return self.lm_head(out)  # (B, L, vocab_size)
 
     @torch.no_grad()
