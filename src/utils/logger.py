@@ -35,16 +35,16 @@ class CSVRecorder:
 
         with open(self.csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(["epoch", "train_loss", "val_acc", "lr"])
+            writer.writerow(["epoch", "train_loss", "val_metric", "lr"])
 
-    def log(self, epoch: int, train_loss: float, val_acc: float, lr: float | None = None) -> None:
+    def log(self, epoch: int, train_loss: float, val_metric: float, lr: float | None = None) -> None:
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(
                 [
                     epoch,
                     f"{train_loss:.6f}",
-                    f"{val_acc:.6f}",
+                    f"{val_metric:.6f}",
                     f"{lr:.6g}" if lr is not None else "",
                 ]
             )

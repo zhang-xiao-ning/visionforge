@@ -6,7 +6,7 @@ def test_csv_recorder_writes_header(tmp_path):
     CSVRecorder(csv_path)
 
     content = csv_path.read_text()
-    assert "epoch,train_loss,val_acc,lr" in content
+    assert "epoch,train_loss,val_metric,lr" in content
 
 
 def test_csv_recorder_appends_row(tmp_path):

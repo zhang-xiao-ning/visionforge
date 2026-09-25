@@ -197,7 +197,7 @@ Every run creates:
 
 ```text
 outputs/<exp>_<timestamp>.log     # full log
-outputs/<exp>_<timestamp>.csv     # epoch, train_loss, val_acc, lr
+outputs/<exp>_<timestamp>.csv     # epoch, train_loss, val_metric, lr
 outputs/<exp>_<timestamp>.json    # config + environment snapshot
 outputs/<exp>_<timestamp>/        # TensorBoard event files
 checkpoints/<exp>_<timestamp>.pt  # model + optimizer + scheduler
