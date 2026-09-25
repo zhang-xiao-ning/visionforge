@@ -22,7 +22,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data.tokenizer import CharTokenizer
+from data.tokenizers.char import CharTokenizer
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]

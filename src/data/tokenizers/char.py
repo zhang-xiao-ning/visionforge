@@ -1,13 +1,10 @@
-"""Character-level tokenizer for image captioning.
+"""Character-level tokenizer.
 
-A character-level tokenizer is the simplest thing that works:
+Adapter: raw character set → Tokenizer protocol.
 
-- No training needed (unlike BPE)
-- Tiny vocabulary (~50 chars for English)
-- Slow generation, but fine for a small captioning model
-
-Special token IDs are fixed at the front so `pad_id == 0`, which
-matches PyTorch's `ignore_index` default.
+Suitable for tiny experiments and unit tests. Not suitable for Chinese
+text: a Chinese caption of 20 characters becomes 22 tokens (vs ~10 with
+a proper BPE trained on Chinese).
 """
 
 import json
@@ -23,7 +20,7 @@ SPECIAL_TOKENS = [PAD_TOKEN, BOS_TOKEN, EOS_TOKEN, UNK_TOKEN]
 
 
 class CharTokenizer:
-    """Maps characters to integer ids and back."""
+    """Maps characters to integer ids and back (implements Tokenizer)."""
 
     def __init__(self, itos: list[str]) -> None:
         self.itos = itos

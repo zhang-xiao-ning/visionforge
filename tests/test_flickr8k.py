@@ -12,7 +12,7 @@ from data.flickr8k import (
     load_split,
     make_collate_fn,
 )
-from data.tokenizer import CharTokenizer
+from data.tokenizers.char import CharTokenizer
 
 
 def _make_fixture(tmp_path: Path) -> tuple[Path, dict[str, list[str]]]:
