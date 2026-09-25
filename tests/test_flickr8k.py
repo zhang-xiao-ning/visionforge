@@ -85,8 +85,9 @@ def test_collate_pads_to_max_length(tmp_path: Path) -> None:
 
     assert batch["image"].shape == (3, 3, 224, 224)
     assert batch["input_ids"].shape == batch["target_ids"].shape
-    # padded positions should be pad_id
+    # input padded with pad_id, target padded with -100
     assert (batch["input_ids"][:, -1] == tok.pad_id).any()
+    assert (batch["target_ids"][:, -1] == -100).any()
 
 
 def test_max_len_truncates(tmp_path: Path) -> None:

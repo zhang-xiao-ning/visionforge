@@ -22,10 +22,11 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data.tokenizers.char import CharTokenizer
+from data.tokenizers import Tokenizer
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
+IGNORE_INDEX = -100  # PyTorch default; not a valid token id
 
 
 def _train_transform(image_size: int = 224) -> transforms.Compose:
@@ -85,7 +86,7 @@ class Flickr8kDataset(Dataset[dict[str, Any]]):
         image_dir: Path,
         image_names: list[str],
         captions: dict[str, list[str]],
-        tokenizer: CharTokenizer,
+        tokenizer: Tokenizer,
         transform: transforms.Compose,
         max_len: int = 64,
     ) -> None:
@@ -133,8 +134,10 @@ def make_collate_fn(pad_id: int) -> Callable[[list[dict[str, Any]]], dict[str, A
         images = torch.stack([b["image"] for b in batch])
         max_len = max(len(b["input_ids"]) for b in batch)
 
+        # input_ids: padded with pad_id (decoder uses it for key_padding_mask)
+        # target_ids: padded with -100 (loss uses ignore_index=-100)
         input_ids = torch.full((len(batch), max_len), pad_id, dtype=torch.long)
-        target_ids = torch.full((len(batch), max_len), pad_id, dtype=torch.long)
+        target_ids = torch.full((len(batch), max_len), IGNORE_INDEX, dtype=torch.long)
 
         for i, b in enumerate(batch):
             n = len(b["input_ids"])
@@ -152,7 +155,7 @@ def make_collate_fn(pad_id: int) -> Callable[[list[dict[str, Any]]], dict[str, A
 
 def build_captioning_loaders(
     root: Path,
-    tokenizer: CharTokenizer,
+    tokenizer: Tokenizer,
     batch_size: int = 32,
     num_workers: int = 0,
     max_len: int = 64,

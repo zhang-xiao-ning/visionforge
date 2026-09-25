@@ -25,18 +25,16 @@ def _make_batch(
     B: int = 2,
     L: int = 5,
     image_size: int = 32,
-    pad_id: int = 0,
 ) -> dict[str, Any]:
     images = torch.randn(B, 3, image_size, image_size)
     input_ids = torch.randint(1, 10, (B, L))
     target_ids = torch.randint(1, 10, (B, L))
-    # add some padding to test ignore_index
-    target_ids[:, -1] = pad_id
+    target_ids[:, -1] = -100  # padding target
     return {"image": images, "input_ids": input_ids, "target_ids": target_ids}
 
 
 def test_train_step_returns_scalar_loss() -> None:
-    task = CaptioningTask(pad_id=0)
+    task = CaptioningTask()
     model = _DummyCaptioningModel(vocab_size=20)
     batch = _make_batch()
     loss = task.train_step(model, batch, torch.device("cpu"), torch.float32)
@@ -45,7 +43,7 @@ def test_train_step_returns_scalar_loss() -> None:
 
 
 def test_eval_step_returns_loss_and_perplexity() -> None:
-    task = CaptioningTask(pad_id=0)
+    task = CaptioningTask()
     model = _DummyCaptioningModel(vocab_size=20)
     batch = _make_batch()
     metrics = task.eval_step(model, batch, torch.device("cpu"), torch.float32)
@@ -56,7 +54,7 @@ def test_eval_step_returns_loss_and_perplexity() -> None:
 
 
 def test_perplexity_is_exp_of_loss() -> None:
-    task = CaptioningTask(pad_id=0)
+    task = CaptioningTask()
     model = _DummyCaptioningModel(vocab_size=20)
     batch = _make_batch()
     metrics = task.eval_step(model, batch, torch.device("cpu"), torch.float32)
@@ -65,12 +63,12 @@ def test_perplexity_is_exp_of_loss() -> None:
 
 def test_padding_positions_are_ignored() -> None:
     """Changing the padded target should not change the loss."""
-    task = CaptioningTask(pad_id=0)
+    task = CaptioningTask()
     model = _DummyCaptioningModel(vocab_size=20)
 
     batch_a = _make_batch()
     batch_b = {k: v.clone() for k, v in batch_a.items()}
-    batch_b["target_ids"][:, -1] = 0  # already 0, but let's be explicit
+    batch_b["target_ids"][:, -1] = 5
 
     loss_a = task.train_step(model, batch_a, torch.device("cpu"), torch.float32)
     loss_b = task.train_step(model, batch_b, torch.device("cpu"), torch.float32)

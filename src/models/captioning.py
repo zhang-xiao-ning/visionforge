@@ -86,6 +86,7 @@ class CaptioningModel(nn.Module):
         dropout: float = 0.1,
         image_size: int = 224,
         patch_size: int = 16,
+        tie_weights: bool = True,
     ) -> None:
         super().__init__()
         if max_len < 1:
@@ -118,12 +119,15 @@ class CaptioningModel(nn.Module):
         )
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=decoder_layers)
 
-        self.lm_head = nn.Linear(d_model, vocab_size)
+        self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
+        # init
         nn.init.trunc_normal_(self.token_embed.weight, std=0.02)
         nn.init.trunc_normal_(self.pos_embed_dec, std=0.02)
         nn.init.trunc_normal_(self.lm_head.weight, std=0.02)
-        nn.init.zeros_(self.lm_head.bias)
+
+        if tie_weights:
+            self.lm_head.weight = self.token_embed.weight
 
     @staticmethod
     def _causal_mask(size: int, device: torch.device) -> torch.Tensor:

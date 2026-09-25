@@ -8,6 +8,8 @@ import torch.nn.functional as F
 
 from tasks.base import Task
 
+IGNORE_INDEX = -100  # 文件顶部加常量
+
 
 class CaptioningTask(Task):
     """Image captioning with cross-entropy over tokens.
@@ -23,9 +25,6 @@ class CaptioningTask(Task):
 
     primary_metric = "perplexity"
     higher_is_better = False  # lower perplexity is better
-
-    def __init__(self, pad_id: int = 0) -> None:
-        self.pad_id = pad_id
 
     def train_step(
         self,
@@ -44,7 +43,7 @@ class CaptioningTask(Task):
         return F.cross_entropy(
             logits.reshape(-1, vocab_size),
             target_ids.reshape(-1),
-            ignore_index=self.pad_id,
+            ignore_index=IGNORE_INDEX,
         )
 
     def eval_step(
@@ -64,7 +63,7 @@ class CaptioningTask(Task):
         loss = F.cross_entropy(
             logits.reshape(-1, vocab_size),
             target_ids.reshape(-1),
-            ignore_index=self.pad_id,
+            ignore_index=IGNORE_INDEX,
         )
         loss_value = loss.item()
 

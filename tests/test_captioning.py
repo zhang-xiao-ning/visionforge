@@ -84,3 +84,25 @@ def test_generate_respects_max_new_tokens() -> None:
     assert out.shape[1] <= 6
     assert out.shape[1] >= 2
     assert out[0, 0].item() == 1  # starts with BOS
+
+
+def test_lm_head_tied_to_token_embed() -> None:
+    model = _make_model()
+    # 默认 tie_weights=True
+    assert model.lm_head.weight is model.token_embed.weight
+
+
+def test_tie_weights_false_untied() -> None:
+    model = CaptioningModel(
+        vocab_size=50,
+        pad_id=0,
+        d_model=64,
+        num_heads=4,
+        encoder_layers=1,
+        decoder_layers=1,
+        dim_feedforward=128,
+        image_size=64,
+        patch_size=16,
+        tie_weights=False,
+    )
+    assert model.lm_head.weight is not model.token_embed.weight
