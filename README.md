@@ -279,9 +279,7 @@ visionforge/
 ├── pyproject.toml
 ├── .pre-commit-config.yaml
 ├── .gitignore
-├── README.md
-├── pack.sh
-└── dump_code.sh
+└──  README.md
 ```
 
 ---
