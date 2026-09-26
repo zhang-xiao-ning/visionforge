@@ -2,13 +2,12 @@
 
 ![CI](https://github.com/zhang-xiao-ning/visionforge/actions/workflows/ci.yml/badge.svg)
 
-CIFAR-10 image classification with PyTorch.
+Image classification and image captioning with PyTorch.
 
-A small, clean, extensible training framework. Supports multiple models
-(MLP / ConvNet / ViT), distributed training, ONNX export, a FastAPI
-inference service, and a full local dev environment (lint + type check
-+ tests + pre-commit + CI).
-
+A small, clean, extensible training framework. Supports multiple tasks
+(classification on CIFAR-10, captioning on Flickr8k), distributed
+training, ONNX export, a FastAPI inference service, and a full local
+dev environment (lint + type check + tests + pre-commit + CI).
 ---
 
 ## Requirements
@@ -51,6 +50,12 @@ tar -xzf cifar-10-python.tar.gz
 rm cifar-10-python.tar.gz
 ```
 
+### Flickr8k (for captioning)
+
+```bash
+bash scripts/download_datasets.sh flickr8k
+```
+
 Expected structure:
 
 ```text
@@ -62,6 +67,12 @@ datasets/cifar-10-batches-py/
 ├── data_batch_5
 ├── test_batch
 └── batches.meta
+├── Flicker8k_Dataset/          # 8091 images (note the misspelling)
+└── Flickr8k_text/
+    ├── Flickr8k.token.txt
+    ├── Flickr_8k.trainImages.txt
+    ├── Flickr_8k.devImages.txt
+    └── Flickr_8k.testImages.txt
 ```
 
 Each `data_batch_*` should be ~30 MB.
@@ -70,19 +81,14 @@ Each `data_batch_*` should be ~30 MB.
 
 ## Training
 
-Basic usage:
+# Basic usage:
 
 ```bash
-make train EXP=mlp EPOCHS=5
-make train EXP=deep_convnet EPOCHS=10 LR=0.1
-make train EXP=vit EPOCHS=10 BS=256 AMP=1
+make train EXP=captioning EPOCHS=5
 ```
+# or directly
+uv run python src/main.py --experiment captioning --dataset flickr8k --epochs 5 --batch-size 32
 
-Or directly:
-
-```bash
-uv run python src/main.py --experiment vit --epochs 10 --batch-size 256 --amp
-```
 
 ### Resume from checkpoint
 
@@ -151,9 +157,8 @@ USE_GPU=false make train EXP=mlp EPOCHS=1   # force CPU
 | Name | Model | Default LR | Notes |
 |---|---|---|---|
 | `mlp` | Two-layer MLP | `1e-2` | Baseline |
-| `shallow_convnet` | 2-layer ConvNet | `1e-2` | |
-| `deep_convnet` | 5-layer ConvNet + BN | `0.1` | ~74% on CIFAR-10 |
 | `vit` | Small ViT | `3e-4` | patch=4, dim=192, depth=6 |
+| `captioning` | ViT encoder + Transformer decoder | `1e-3` | Flickr8k, perplexity ~50 |
 
 ---
 
@@ -216,33 +221,46 @@ make board     # TensorBoard at http://localhost:6006
 ```text
 visionforge/
 ├── src/
-│   ├── __init__.py              # public API + __version__
-│   ├── py.typed                 # type marker for mypy
-│   ├── config.py                # TrainConfig + device + global constants
-│   ├── registry.py              # EXPERIMENTS registry
-│   ├── main.py                  # CLI entry
+│   ├── __init__.py
+│   ├── py.typed
+│   ├── runtime.py               # constants + get_device()
+│   ├── registry.py              # EXPERIMENTS
+│   ├── cli.py                   # argparse → TrainConfig
+│   ├── main.py                  # entry point
 │   ├── data/
+│   │   ├── tokenizers/          # Tokenizer protocol + adapters + factory
+│   │   │   ├── base.py
+│   │   │   ├── char.py
+│   │   │   └── tiktoken_bpe.py
 │   │   ├── transforms.py
 │   │   ├── cifar10.py
-│   │   └── datasets.py          # dataset registry + loader builder
+│   │   ├── flickr8k.py          # captioning dataset
+│   │   └── datasets.py          # classification loaders
 │   ├── models/
+│   │   ├── base.py              # SetupContext / ExperimentBundle
 │   │   ├── mlp.py
 │   │   ├── shallow_convnet.py
 │   │   ├── deep_convnet.py
-│   │   └── vit.py
+│   │   ├── vit.py
+│   │   └── captioning.py        # ViT encoder + Transformer decoder
+│   ├── tasks/
+│   │   ├── base.py              # Task protocol
+│   │   ├── classification.py
+│   │   └── captioning.py
 │   ├── training/
-│   │   ├── train.py             # generic training loop
-│   │   ├── evaluator.py         # generic evaluate()
-│   │   └── strategy.py          # SingleDevice / DDP
+│   │   ├── train.py
+│   │   ├── evaluator.py
+│   │   └── strategy.py
 │   ├── experiment/
-│   │   ├── artifacts.py         # RunArtifacts
-│   │   └── runner.py            # ExperimentRunner
+│   │   ├── config.py
+│   │   ├── artifacts.py
+│   │   └── runner.py
 │   ├── export/
 │   │   └── onnx_export.py
 │   ├── serving/
-│   │   ├── api.py               # FastAPI routes
-│   │   ├── inference.py         # ONNX Runtime
-│   │   └── schema.py            # Pydantic schemas
+│   │   ├── api.py
+│   │   ├── inference.py
+│   │   └── schema.py
 │   └── utils/
 │       ├── path.py
 │       ├── logger.py
@@ -258,28 +276,37 @@ visionforge/
 │   ├── test_logger.py
 │   ├── test_artifacts.py
 │   ├── test_strategy.py
-│   └── test_runner.py
+│   ├── test_runner.py
+│   ├── test_captioning.py
+│   ├── test_captioning_task.py
+│   ├── test_tokenizer.py
+│   ├── test_flickr8k.py
+│   ├── test_version.py
+│   ├── test_integration.py
+│   └── test_regression.py
 ├── docker/
 │   ├── Dockerfile.serve
 │   └── Dockerfile.train
 ├── scripts/
 │   ├── ci.sh
+│   ├── download_datasets.sh
 │   └── train_ddp.sh
-├── datasets/                    # data (not in git)
-├── checkpoints/                 # weights (not in git)
-├── outputs/                     # logs/CSV/JSON (not in git)
-├── exports/                     # ONNX models (not in git)
 ├── docs/
 │   ├── TODO.md
 │   ├── COMPLETED.md
-│   └── memo-1.md ~ memo-9.md
+│   └── memo-1.md ~ memo-10.md
+├── datasets/                    # (not in git)
+├── checkpoints/                 # (not in git)
+├── outputs/                     # (not in git)
+├── exports/                     # (not in git)
 ├── docker-compose.yml
 ├── .dockerignore
 ├── Makefile
 ├── pyproject.toml
 ├── .pre-commit-config.yaml
 ├── .gitignore
-└──  README.md
+├── README.md
+└── uv.lock
 ```
 
 ---
@@ -362,7 +389,18 @@ git commit -m "..."
 ```bash
    make test
    make train EXP=my_model EPOCHS=1
-  ```
+ ```
+### Adding a new task
+
+For tasks whose model construction depends on the dataset
+(e.g. captioning needs `vocab_size` from a tokenizer), implement
+a `setup(ctx)` classmethod on the model:
+
+```python
+@classmethod
+def setup(cls, ctx: SetupContext) -> ExperimentBundle:
+    ...
+```
 
 ### Adding a new dataset
 
