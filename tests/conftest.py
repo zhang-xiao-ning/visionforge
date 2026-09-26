@@ -39,3 +39,11 @@ def dummy_loader():
     x = torch.randn(16, 3, 32, 32)
     y = torch.randint(0, 10, (16,))
     return DataLoader(TensorDataset(x, y), batch_size=4)
+
+
+@pytest.fixture
+def any_experiment() -> str:
+    """Any experiment name for tests that don't care about the specific model."""
+    from registry import EXPERIMENTS
+
+    return next(iter(EXPERIMENTS))

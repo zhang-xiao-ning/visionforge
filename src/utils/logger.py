@@ -37,7 +37,9 @@ class CSVRecorder:
             writer = csv.writer(f)
             writer.writerow(["epoch", "train_loss", "val_metric", "lr"])
 
-    def log(self, epoch: int, train_loss: float, val_metric: float, lr: float | None = None) -> None:
+    def log(
+        self, epoch: int, train_loss: float, val_metric: float, lr: float | None = None
+    ) -> None:
         with open(self.csv_path, "a", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(

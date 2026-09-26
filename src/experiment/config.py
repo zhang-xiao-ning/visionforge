@@ -2,10 +2,12 @@
 
 from dataclasses import dataclass
 
+from runtime import DEFAULT_EXPERIMENT
+
 
 @dataclass
 class TrainConfig:
-    experiment: str = "mlp"
+    experiment: str = DEFAULT_EXPERIMENT
     epochs: int = 1
     learning_rate: float = 1e-2
     momentum: float = 0.9

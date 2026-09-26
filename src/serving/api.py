@@ -7,10 +7,11 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
 
+from runtime import DEFAULT_EXPERIMENT
 from serving.inference import OnnxClassifier
 from serving.schema import HealthResponse, Prediction, PredictionResponse
 
-DEFAULT_ONNX_PATH = Path("exports/mlp.onnx")
+DEFAULT_ONNX_PATH = Path(f"exports/{DEFAULT_EXPERIMENT}.onnx")
 
 
 def create_app(onnx_path: Path | None = None) -> FastAPI:
@@ -19,7 +20,7 @@ def create_app(onnx_path: Path | None = None) -> FastAPI:
 
     if not onnx_path.exists():
         raise FileNotFoundError(
-            f"ONNX model not found at {onnx_path}. Run `make export EXP=mlp` first."
+            f"ONNX model not found at {onnx_path}. Run `make export EXP={DEFAULT_EXPERIMENT}` first."
         )
 
     app = FastAPI(title="visionforge inference", version="0.1.0")

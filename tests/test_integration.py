@@ -18,7 +18,6 @@ import torch.optim as optim
 from data.datasets import build_loaders
 from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
-from models.mlp import MLP
 from tasks.classification import ClassificationTask
 from training.strategy import SingleDeviceStrategy
 from training.train import train
@@ -34,11 +33,16 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def test_train_one_epoch_on_real_data() -> None:
-    """Train 1 epoch on 128 real images. Verifies the full training path."""
-    loader_train, loader_val, _ = build_loaders(name="cifar10", batch_size=32, num_train=128)
+def test_train_one_epoch_on_real_data(any_experiment: str) -> None:
+    from registry import EXPERIMENTS
 
-    model = MLP()
+    loader_train, loader_val, _ = build_loaders(
+        name="cifar10",
+        batch_size=32,
+        num_train=32,  # ViT 慢，降到 32
+    )
+    model_cls, _ = EXPERIMENTS[any_experiment]
+    model = model_cls()
     optimizer = optim.SGD(model.parameters(), lr=0.01)
 
     result = train(model, optimizer, loader_train, loader_val, ClassificationTask(), epochs=1)
@@ -47,13 +51,13 @@ def test_train_one_epoch_on_real_data() -> None:
     assert 0.0 <= result["best_acc"] <= 1.0
 
 
-def test_runner_saves_and_resumes(tmp_path: Path) -> None:
+def test_runner_saves_and_resumes(tmp_path: Path, any_experiment: str) -> None:
     """Run a small experiment, then resume from its checkpoint."""
     outputs_dir = tmp_path / "outputs"
     checkpoints_dir = tmp_path / "checkpoints"
 
     # First run: 1 epoch
-    cfg1 = TrainConfig(experiment="mlp", epochs=1)
+    cfg1 = TrainConfig(experiment=any_experiment, epochs=1)
     runner1 = ExperimentRunner(
         cfg=cfg1,
         dataset_name="cifar10",
@@ -71,7 +75,7 @@ def test_runner_saves_and_resumes(tmp_path: Path) -> None:
     assert result1["last_epoch"] == 1
 
     # Second run: resume from checkpoint, target epoch 2
-    cfg2 = TrainConfig(experiment="mlp", epochs=2)
+    cfg2 = TrainConfig(experiment=any_experiment, epochs=2)
     runner2 = ExperimentRunner(
         cfg=cfg2,
         dataset_name="cifar10",

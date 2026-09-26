@@ -108,6 +108,7 @@ def test_tie_weights_false_untied() -> None:
     assert model.lm_head.weight is not model.token_embed.weight
 
 
+@pytest.mark.skip(reason="requires Flickr8k + network (tiktoken); run manually")
 def test_setup_returns_bundle() -> None:
     """setup() returns (model, task, loaders) with consistent vocab."""
     pytest.importorskip("data.flickr8k")  # skip if no data

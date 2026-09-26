@@ -33,7 +33,6 @@ pytestmark = pytest.mark.skipif(
 # (experiment, epochs, num_train, min_val_acc)
 BASELINES = [
     ("mlp", 1, 1000, 0.15),
-    ("deep_convnet", 1, 1000, 0.15),
 ]
 
 

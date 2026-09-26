@@ -156,7 +156,6 @@ USE_GPU=false make train EXP=mlp EPOCHS=1   # force CPU
 
 | Name | Model | Default LR | Notes |
 |---|---|---|---|
-| `mlp` | Two-layer MLP | `1e-2` | Baseline |
 | `vit` | Small ViT | `3e-4` | patch=4, dim=192, depth=6 |
 | `captioning` | ViT encoder + Transformer decoder | `1e-3` | Flickr8k, perplexity ~50 |
 
@@ -238,9 +237,6 @@ visionforge/
 │   │   └── datasets.py          # classification loaders
 │   ├── models/
 │   │   ├── base.py              # SetupContext / ExperimentBundle
-│   │   ├── mlp.py
-│   │   ├── shallow_convnet.py
-│   │   ├── deep_convnet.py
 │   │   ├── vit.py
 │   │   └── captioning.py        # ViT encoder + Transformer decoder
 │   ├── tasks/
@@ -268,19 +264,19 @@ visionforge/
 │       └── env.py
 ├── tests/
 │   ├── conftest.py
-│   ├── test_models.py
-│   ├── test_transforms.py
+│   ├── test_artifacts.py
 │   ├── test_data.py
 │   ├── test_evaluator.py
+│   ├── test_flickr8k.py
+│   ├── test_transforms.py
 │   ├── test_trainer.py
 │   ├── test_logger.py
 │   ├── test_artifacts.py
 │   ├── test_strategy.py
 │   ├── test_runner.py
-│   ├── test_captioning.py
-│   ├── test_captioning_task.py
+│   ├── test_model_captioning.py
+│   ├── test_task_captioning.py
 │   ├── test_tokenizer.py
-│   ├── test_flickr8k.py
 │   ├── test_version.py
 │   ├── test_integration.py
 │   └── test_regression.py

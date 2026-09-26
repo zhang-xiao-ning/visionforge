@@ -22,10 +22,10 @@ def _fake_build_loaders(name: str, batch_size: int, **kwargs):
     )
 
 
-def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
+def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path, any_experiment: str) -> None:
     monkeypatch.setattr("experiment.runner.build_loaders", _fake_build_loaders)
 
-    cfg = TrainConfig(experiment="mlp", epochs=1)
+    cfg = TrainConfig(experiment=any_experiment, epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
         dataset_name="cifar10",
@@ -43,10 +43,10 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
     assert result["last_epoch"] == 1
 
 
-def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
+def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path, any_experiment: str) -> None:
     monkeypatch.setattr("experiment.runner.build_loaders", _fake_build_loaders)
 
-    cfg = TrainConfig(experiment="mlp", epochs=1)
+    cfg = TrainConfig(experiment=any_experiment, epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
         dataset_name="cifar10",
@@ -61,7 +61,9 @@ def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
     assert runner.artifacts.ckpt_path.exists()
 
 
-def test_runner_passes_num_train_to_build_loaders(monkeypatch, tmp_path: Path) -> None:
+def test_runner_passes_num_train_to_build_loaders(
+    monkeypatch, tmp_path: Path, any_experiment: str
+) -> None:
     captured: dict[str, int] = {}
 
     def fake_build_loaders(name: str, batch_size: int, num_train: int, **kwargs):
@@ -70,7 +72,7 @@ def test_runner_passes_num_train_to_build_loaders(monkeypatch, tmp_path: Path) -
 
     monkeypatch.setattr("experiment.runner.build_loaders", fake_build_loaders)
 
-    cfg = TrainConfig(experiment="mlp", epochs=1)
+    cfg = TrainConfig(experiment=any_experiment, epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
         dataset_name="cifar10",

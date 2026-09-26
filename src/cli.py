@@ -4,11 +4,14 @@ import argparse
 
 from experiment.config import TrainConfig
 from registry import EXPERIMENTS
+from runtime import DEFAULT_EXPERIMENT
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train CIFAR-10 models.")
-    parser.add_argument("--experiment", type=str, default="mlp", choices=list(EXPERIMENTS.keys()))
+    parser.add_argument(
+        "--experiment", type=str, default=DEFAULT_EXPERIMENT, choices=list(EXPERIMENTS.keys())
+    )
     parser.add_argument("--dataset", type=str, default="cifar10")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=1)
