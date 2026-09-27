@@ -10,27 +10,14 @@ deliberately generous: they catch "training is broken" bugs, not minor
 numerical drift from environment differences (MPS vs CUDA vs CPU).
 """
 
-import os
-
 import pytest
 
 from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from registry import EXPERIMENTS
 from training.strategy import SingleDeviceStrategy
-from utils.path import DATASETS_PATH
 
-CIFAR10_PATH = DATASETS_PATH / "cifar-10-batches-py"
-_HAS_CIFAR10 = (CIFAR10_PATH / "test_batch").exists()
-_RUN_REGRESSION = os.environ.get("RUN_REGRESSION", "").lower() in ("1", "true", "yes")
-
-pytestmark = [
-    pytest.mark.regression,
-    pytest.mark.skipif(
-        not (_RUN_REGRESSION and _HAS_CIFAR10),
-        reason=(...),
-    ),
-]
+pytestmark = pytest.mark.regression
 
 
 # (experiment, epochs, num_train, min_val_acc)
@@ -45,6 +32,8 @@ BASELINES = [
     ids=[f"{e}-{ep}ep-{n}imgs" for e, ep, n, _ in BASELINES],
 )
 def test_accuracy_above_baseline(
+    require_regression,
+    require_cifar10,
     experiment: str,
     epochs: int,
     num_train: int,

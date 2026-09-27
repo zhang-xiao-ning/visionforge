@@ -9,7 +9,6 @@ checkpoint saving, and resume. They are not run in CI because CI has
 no CIFAR-10 data available.
 """
 
-import os
 from pathlib import Path
 
 import pytest
@@ -21,22 +20,13 @@ from experiment.runner import ExperimentRunner
 from tasks.classification import ClassificationTask
 from training.strategy import SingleDeviceStrategy
 from training.train import train
-from utils.path import DATASETS_PATH
 
-CIFAR10_PATH = DATASETS_PATH / "cifar-10-batches-py"
-_HAS_CIFAR10 = (CIFAR10_PATH / "test_batch").exists()
-_RUN_INTEGRATION = os.environ.get("RUN_INTEGRATION", "").lower() in ("1", "true", "yes")
-
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(
-        not (_RUN_INTEGRATION and _HAS_CIFAR10),
-        reason=(f"Integration tests require RUN_INTEGRATION=1 and CIFAR-10 under {CIFAR10_PATH}"),
-    ),
-]
+pytestmark = pytest.mark.integration
 
 
-def test_train_one_epoch_on_real_data(any_experiment: str) -> None:
+def test_train_one_epoch_on_real_data(
+    require_integration, require_cifar10, any_experiment: str
+) -> None:
     from registry import EXPERIMENTS
 
     loader_train, loader_val, _ = build_loaders(
@@ -54,7 +44,9 @@ def test_train_one_epoch_on_real_data(any_experiment: str) -> None:
     assert 0.0 <= result["best_acc"] <= 1.0
 
 
-def test_runner_saves_and_resumes(tmp_path: Path, any_experiment: str) -> None:
+def test_runner_saves_and_resumes(
+    require_integration, require_cifar10, tmp_path: Path, any_experiment: str
+) -> None:
     """Run a small experiment, then resume from its checkpoint."""
     outputs_dir = tmp_path / "outputs"
     checkpoints_dir = tmp_path / "checkpoints"
