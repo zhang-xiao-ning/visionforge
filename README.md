@@ -172,6 +172,20 @@ make export EXP=mlp
 
 Verifies PyTorch vs ONNX output (max diff < 1e-5) as part of the export.
 
+### Generate a caption
+
+```bash
+make sample CKPT=checkpoints/captioning_xxx.pt IMG=datasets/Flicker8k_Dataset/xxx.jpg
+```
+
+Or directly:
+
+```bash
+uv run python scripts/sample_caption.py \
+    --checkpoint checkpoints/captioning_xxx.pt \
+    --image datasets/Flicker8k_Dataset/xxx.jpg
+```
+
 ### FastAPI service
 
 ```bash
@@ -263,23 +277,20 @@ visionforge/
 │       ├── seed.py
 │       └── env.py
 ├── tests/
-│   ├── conftest.py
-│   ├── test_artifacts.py
-│   ├── test_data.py
-│   ├── test_evaluator.py
-│   ├── test_flickr8k.py
-│   ├── test_transforms.py
-│   ├── test_trainer.py
-│   ├── test_logger.py
-│   ├── test_artifacts.py
-│   ├── test_strategy.py
-│   ├── test_runner.py
-│   ├── test_model_captioning.py
-│   ├── test_task_captioning.py
-│   ├── test_tokenizer.py
-│   ├── test_version.py
-│   ├── test_integration.py
-│   └── test_regression.py
+│   ├── conftest.py              # global fixtures
+│   ├── contracts/               # protocol contracts
+│   │   ├── conftest.py
+│   │   ├── test_classification_contract.py
+│   │   └── test_tokenizer_contract.py
+│   ├── unit/                    # fast, no IO
+│   │   ├── conftest.py
+│   │   └── ... （14 files）
+│   └── integration/             # need real data
+│       ├── conftest.py
+│       ├── test_captioning_integration.py
+│       ├── test_data_integration.py
+│       ├── test_integration.py
+│       └── test_regression.py
 ├── docker/
 │   ├── Dockerfile.serve
 │   └── Dockerfile.train
@@ -432,6 +443,23 @@ Tests run on CPU regardless of the machine's GPU (via `USE_GPU=false`
 in `tests/conftest.py`). This keeps them fast and deterministic across
 macOS / Linux / CI.
 
+### Testing layers
+
+Tests are organized into three layers:
+
+- **`tests/unit/`** — fast, no real data, run by default
+- **`tests/contracts/`** — verify every implementation of a protocol
+  (e.g. all tokenizers, all classification models)
+- **`tests/integration/`** — need real data on disk + `RUN_INTEGRATION=1`
+
+```bash
+make test                                  # unit + contracts (fast, ~2s)
+uv run pytest -m integration               # integration (deselect by default)
+RUN_INTEGRATION=1 uv run pytest -m integration   # run with real data
+```
+
+Markers are defined in `pyproject.toml`; the default `addopts` excludes
+`integration` and `regression`.
 ---
 
 ## Reproducibility

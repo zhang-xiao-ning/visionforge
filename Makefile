@@ -2,7 +2,7 @@
 # visionforge
 # ============================================================
 
-.PHONY: help install install-hooks test test-integration test-regression lint format check train train-docker train-ddp board export serve ci clean
+.PHONY: help install install-hooks test test-integration test-regression lint format check train train-docker train-ddp board export serve sample ci clean
 
 EXP     ?= mlp
 EPOCHS  ?= 1
@@ -16,6 +16,9 @@ OPSET   ?= 17
 ONNX    ?= exports/mlp.onnx
 PORT    ?= 8000
 NPROC   ?= 1
+IMG    ?=
+TOK    ?=
+MAXTOK ?=
 
 help:
 	@echo "Available targets:"
@@ -38,6 +41,8 @@ help:
 	@echo "      EXP=mlp [CKPT=path] [OUT=path] [OPSET=17]"
 	@echo "  make serve                Start FastAPI inference server"
 	@echo "      ONNX=exports/mlp.onnx PORT=8000"
+	@echo "  make sample               Generate caption for an image"
+	@echo "      CKPT=path/to.pt IMG=path/to.jpg [TOK=tiktoken] [MAXTOK=32]"
 	@echo "  make ci                   Run full CI pipeline locally"
 	@echo "  make clean                Remove caches"
 
@@ -100,6 +105,13 @@ export:
 		$(if $(CKPT),--checkpoint $(CKPT),) \
 		$(if $(OUT),--output $(OUT),) \
 		--opset $(OPSET)
+
+sample:
+	uv run python scripts/sample_caption.py \
+		--checkpoint $(CKPT) \
+		--image $(IMG) \
+		$(if $(TOK),--tokenizer $(TOK),) \
+		$(if $(MAXTOK),--max-new-tokens $(MAXTOK),)
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
