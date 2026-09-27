@@ -338,3 +338,139 @@ EXPERIMENTS = {
 | C（从 0 训） | **不够**（要 A100） |
 
 **未来可能需要的硬件讨论**：云 GPU 租用成本。
+
+
+---
+
+## 2026-09-27：向 LLaVA / 生成式 / LM 演进的 Roadmap
+
+### 背景
+
+当前 captioning 是教学级范式（从零训练的小 ViT + Transformer）。要向 LLaVA
+（企业级多模态）和 CS236（生成式）/ CS224N（LM）演进，framework 需要补齐
+一系列通用能力。
+
+本文档梳理**所有维度的候选方向**，排出优先级。
+
+### 完整维度清单
+
+#### 数据层
+
+| # | 方向 | 通用性 | LLaVA / LM 需要？ |
+|---|---|---|---|
+| 5 | DataBundle + `from_data` 重构 | ✅ 架构 | ✅ |
+| 6 | 数据缓存（tokenized 结果存盘） | ✅ 大模型 | ✅ |
+| 7 | packed sequence（多句拼接） | ✅ LM | ✅ |
+| 8 | DatasetInfo 扩展（mean/std/dtype） | ✅ | ⚠️ |
+| 9 | 数据并行加载（webdataset / streaming） | ⚠️ 大数据 | ✅ |
+
+#### 模型层
+
+| # | 方向 | 通用性 | LLaVA 需要？ |
+|---|---|---|---|
+| 10 | 加载预训练权重（CLIP / HF） | ✅ | ✅ |
+| 11 | 权重初始化策略 | ⚠️ | ⚠️ |
+| 12 | 注册表带 category（vit 是 classification） | ✅ | ✅ |
+
+#### 训练层
+
+| # | 方向 | 通用性 | LLaVA / LM / Diffusion 需要？ |
+|---|---|---|---|
+| 13 | **优化器抽象**（SGD → AdamW / Lion） | ✅ **必修** | ✅ |
+| 14 | **学习率调度**（cosine / warmup / OneCycle） | ✅ **必修** | ✅ |
+| 15 | **梯度累积**（等效大 batch） | ✅ **必修** | ✅ |
+| 16 | **梯度裁剪**（Transformer 标配） | ✅ **必修** | ✅ |
+| 17 | 多阶段训练（先对齐后指令） | ✅ LLaVA 核心 | ✅ |
+| 18 | AMP 实测（大模型） | ⚠️ | ✅ |
+
+#### 评估层
+
+| # | 方向 | 通用性 | 需要？ |
+|---|---|---|---|
+| 19 | BLEU / CIDEr / METEOR / ROUGE | ✅ 生成任务 | ✅ |
+| 20 | FID / IS（生成式） | ✅ CS236 | ❌ |
+| 21 | GPT-4 打分 / LLM-as-judge | ⚠️ 高级 | ⚠️ |
+
+#### 推理层
+
+| # | 方向 | 通用性 | LLaVA 需要？ |
+|---|---|---|---|
+| 22 | KV cache | ✅ LM 必备 | ✅ |
+| 23 | 采样策略（beam / top-k / top-p） | ⚠️ | ✅ |
+| 24 | 量化（int8 / 4bit / bnb） | ✅ 大模型 | ✅ |
+| 25 | vLLM / TGI 集成 | ✅ 部署 | ✅ |
+| 26 | llama.cpp / GGUF | ⚠️ 本地推理 | ⚠️ |
+
+#### 工程层
+
+| # | 方向 | 通用性 | LLaVA 需要？ |
+|---|---|---|---|
+| 27 | Checkpoint 自包含（配置 + tokenizer） | ✅ | ✅ |
+| 28 | 实验追踪（WandB / MLflow） | ⚠️ | ⚠️ |
+| 29 | 多机多卡（跨机 DDP） | ⚠️ | ✅ |
+| 30 | FSDP / DeepSpeed | ⚠️ 大模型 | ✅ |
+
+### 关键洞察：训练层 4 个是"最低垂的果实"
+
+**13 / 14 / 15 / 16 是必补的通用能力。**
+
+理由：
+
+1. **现在 captioning 用 SGD + 固定 lr 跑通纯属"玩具小"**——一旦模型放大、
+   数据变多、接 LLaVA / Diffusion / LM，**第一天就会撞上这 4 个**
+2. **不是"为 LLaVA 做"——是"为所有未来训练做"**
+3. **不加 LLaVA 也能现在做**——用 captioning 就能验证
+4. **改动集中在 `TrainConfig` + `runner._build_optimizer` + `train.py`**，
+   不碰 models / data / tasks
+
+### 优先级排序
+
+**短期（1~2 天）**：
+
+| 顺序 | 方向 | 时间 |
+|---|---|---|
+| 1 | 训练层 13 + 14 + 15 + 16 | 半天 |
+| 2 | 评估层 19（BLEU / CIDEr） | 半天 |
+| 3 | 工程层 27（checkpoint 自包含） | 1 小时 |
+
+**中期（做 LLaVA 推理时）**：
+
+- 模型层 10（加载预训练权重）
+- 推理层 22 + 24（KV cache + 量化）
+- 候选 4：LLaVA 推理脚本（撞 framework 缺口）
+
+**长期（做完整 LLaVA / LM 训练时）**：
+
+- 训练层 17（多阶段训练）
+- 数据层 5 / 6 / 7（DataBundle + 缓存 + packing）
+- 候选 3（参数冻结 + LoRA）
+- 推理层 25（vLLM）
+
+### 不做 / 已否
+
+**候选 1：HF Tokenizer 适配器** —— ❌
+
+- 用户明确不想被 HF 生态绑死
+- 当前 `Tokenizer` 协议已能容纳多个实现，未来可加非 HF 的适配器
+
+**候选 C：Serving `/caption` 端点** —— ❌
+
+- 部署管线未来会换成 vLLM / TGI
+- 现在给玩具模型加生产管线是"死路"
+- 只具备学习价值，不具备长期价值
+
+### 一句话结论
+
+> **先补训练层 4 个通用能力，用 captioning 验证，再碰 LLaVA。**
+
+### 明天工作范围
+
+**做训练层 13 / 14 / 15 / 16**：
+
+- `TrainConfig` 加字段：`optimizer` / `warmup_steps` / `accum_steps` / `grad_clip`
+- `runner._build_optimizer` 支持 SGD / AdamW
+- `runner._build_scheduler` 支持 warmup + cosine
+- `train.py` 加梯度累积 + 梯度裁剪
+- 命令行参数齐全
+- 用 captioning 做真实验证：SGD vs AdamW + cosine
+
