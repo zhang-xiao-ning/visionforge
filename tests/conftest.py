@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+from data.datasets import DATASET_REGISTRY, DatasetInfo
+
 
 @pytest.fixture
 def dummy_batch():
@@ -47,3 +49,15 @@ def any_experiment() -> str:
     from registry import EXPERIMENTS
 
     return next(iter(EXPERIMENTS))
+
+
+@pytest.fixture(params=list(DATASET_REGISTRY.keys()))
+def dataset_name(request: pytest.FixtureRequest) -> str:
+    return request.param
+
+
+@pytest.fixture
+def dataset_info(dataset_name: str) -> DatasetInfo:
+    """Resolve dataset_name → DatasetInfo."""
+    _, info = DATASET_REGISTRY[dataset_name]
+    return info
