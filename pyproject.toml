@@ -42,7 +42,12 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra -m 'not integration and not regression'"
+markers = [
+    "unit: fast, no IO",
+    "integration: needs real data on disk",
+    "regression: needs RUN_REGRESSION=1",
+]
 
 # ---------- ruff ----------
 [tool.ruff]

@@ -27,10 +27,13 @@ CIFAR10_PATH = DATASETS_PATH / "cifar-10-batches-py"
 _HAS_CIFAR10 = (CIFAR10_PATH / "test_batch").exists()
 _RUN_INTEGRATION = os.environ.get("RUN_INTEGRATION", "").lower() in ("1", "true", "yes")
 
-pytestmark = pytest.mark.skipif(
-    not (_RUN_INTEGRATION and _HAS_CIFAR10),
-    reason=(f"Integration tests require RUN_INTEGRATION=1 and CIFAR-10 under {CIFAR10_PATH}"),
-)
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        not (_RUN_INTEGRATION and _HAS_CIFAR10),
+        reason=(f"Integration tests require RUN_INTEGRATION=1 and CIFAR-10 under {CIFAR10_PATH}"),
+    ),
+]
 
 
 def test_train_one_epoch_on_real_data(any_experiment: str) -> None:

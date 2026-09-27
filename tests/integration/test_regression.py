@@ -24,10 +24,13 @@ CIFAR10_PATH = DATASETS_PATH / "cifar-10-batches-py"
 _HAS_CIFAR10 = (CIFAR10_PATH / "test_batch").exists()
 _RUN_REGRESSION = os.environ.get("RUN_REGRESSION", "").lower() in ("1", "true", "yes")
 
-pytestmark = pytest.mark.skipif(
-    not (_RUN_REGRESSION and _HAS_CIFAR10),
-    reason=(f"Regression tests require RUN_REGRESSION=1 and CIFAR-10 under {CIFAR10_PATH}"),
-)
+pytestmark = [
+    pytest.mark.regression,
+    pytest.mark.skipif(
+        not (_RUN_REGRESSION and _HAS_CIFAR10),
+        reason=(...),
+    ),
+]
 
 
 # (experiment, epochs, num_train, min_val_acc)
