@@ -5,30 +5,33 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+from data.bundle import DataBundle
 from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from training.strategy import SingleDeviceStrategy
 
 
-def _fake_build_loaders(name: str, batch_size: int, **kwargs):
-    """Return tiny loaders with the right shape for MLP."""
+def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
+    """Tiny bundle for fast tests (no disk IO)."""
     x = torch.randn(8, 3, 32, 32)
     y = torch.randint(0, 10, (8,))
-    dataset = TensorDataset(x, y)
-    return (
-        DataLoader(dataset, batch_size=4),
-        DataLoader(dataset, batch_size=4),
-        DataLoader(dataset, batch_size=4),
+    ds = TensorDataset(x, y)
+    loader = DataLoader(ds, batch_size=4)
+    return DataBundle(
+        loader_train=loader,
+        loader_val=loader,
+        loader_test=loader,
+        model_init={"num_classes": 10},
+        extras={},
     )
 
 
-def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path, any_experiment: str) -> None:
-    monkeypatch.setattr("experiment.runner.build_loaders", _fake_build_loaders)
+def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
 
-    cfg = TrainConfig(experiment=any_experiment, epochs=1)
+    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
-        dataset_name="cifar10",
         batch_size=4,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -43,13 +46,12 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path, any_experiment: str)
     assert result["last_epoch"] == 1
 
 
-def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path, any_experiment: str) -> None:
-    monkeypatch.setattr("experiment.runner.build_loaders", _fake_build_loaders)
+def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
 
-    cfg = TrainConfig(experiment=any_experiment, epochs=1)
+    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
-        dataset_name="cifar10",
         batch_size=4,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -61,21 +63,18 @@ def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path, any_experiment: st
     assert runner.artifacts.ckpt_path.exists()
 
 
-def test_runner_passes_num_train_to_build_loaders(
-    monkeypatch, tmp_path: Path, any_experiment: str
-) -> None:
-    captured: dict[str, int] = {}
+def test_runner_passes_num_train_to_build_data(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, int | None] = {}
 
-    def fake_build_loaders(name: str, batch_size: int, num_train: int, **kwargs):
-        captured["num_train"] = num_train
-        return _fake_build_loaders(name, batch_size)
+    def fake_build_data(name: str, ctx):
+        captured["num_train"] = ctx.num_train
+        return _fake_data_bundle(name, ctx)
 
-    monkeypatch.setattr("experiment.runner.build_loaders", fake_build_loaders)
+    monkeypatch.setattr("experiment.runner.build_data", fake_build_data)
 
-    cfg = TrainConfig(experiment=any_experiment, epochs=1)
+    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
         cfg=cfg,
-        dataset_name="cifar10",
         batch_size=4,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",

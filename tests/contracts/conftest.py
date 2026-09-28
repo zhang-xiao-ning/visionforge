@@ -13,15 +13,16 @@ from registry import EXPERIMENTS
 
 # Classification experiments eligible for the classification contract.
 # Captioning is excluded because its forward() has a different signature.
-_CLASSIFICATION_EXPERIMENTS = [name for name in EXPERIMENTS if name != "captioning"]
+_CLASSIFICATION_EXPERIMENTS = [
+    name for name, exp in EXPERIMENTS.items() if exp["category"] == "classification"
+]
 
 
 @pytest.fixture(params=_CLASSIFICATION_EXPERIMENTS)
 def classification_experiment_name(request: pytest.FixtureRequest) -> str:
-    return request.param  # type: ignore[no-any-return]
+    return request.param
 
 
 @pytest.fixture
 def classification_experiment_cls(classification_experiment_name: str):
-    cls, _ = EXPERIMENTS[classification_experiment_name]
-    return cls
+    return EXPERIMENTS[classification_experiment_name]["model"]

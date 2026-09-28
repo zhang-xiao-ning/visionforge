@@ -1,5 +1,10 @@
+from typing import TYPE_CHECKING
+
 import torch
 import torch.nn as nn
+
+if TYPE_CHECKING:
+    from data.bundle import DataBundle
 
 
 class PatchEmbedding(nn.Module):
@@ -91,3 +96,8 @@ class ViT(nn.Module):
         x = self.norm(x)
         cls_out = x[:, 0]  # 取 [CLS]
         return self.head(cls_out)  # (B, num_classes)
+
+    @classmethod
+    def from_data(cls, bundle: "DataBundle") -> "ViT":
+        """Build ViT using construction info from the dataset."""
+        return cls(**bundle.model_init)

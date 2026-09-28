@@ -22,7 +22,9 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data.tokenizers import Tokenizer
+from data.bundle import DataBundle, DataContext
+from data.tokenizers import Tokenizer, build_tokenizer
+from utils.path import DATASETS_PATH
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
@@ -211,3 +213,32 @@ def build_captioning_loaders(
     )
 
     return loader_train, loader_val, loader_test
+
+
+def build_bundle(ctx: DataContext) -> DataBundle:
+    """Flickr8k captioning bundle.
+
+    The tokenizer is baked into the dataset (not the model) — its vocab
+    determines the model's lm_head size. We store the tokenizer name in
+    `extras` so the model can be reconstructed from the checkpoint alone.
+    """
+    tokenizer_name = "tiktoken"
+    tokenizer = build_tokenizer(tokenizer_name)
+
+    loader_train, loader_val, loader_test = build_captioning_loaders(
+        root=DATASETS_PATH,
+        tokenizer=tokenizer,
+        batch_size=ctx.batch_size,
+        num_train=ctx.num_train,
+    )
+
+    return DataBundle(
+        loader_train=loader_train,
+        loader_val=loader_val,
+        loader_test=loader_test,
+        model_init={
+            "vocab_size": tokenizer.vocab_size,
+            "pad_id": tokenizer.pad_id,
+        },
+        extras={"tokenizer_name": tokenizer_name},
+    )

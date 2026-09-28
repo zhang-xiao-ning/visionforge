@@ -23,13 +23,12 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from data.datasets import build_loaders
+from data.bundle import DataContext
+from data.datasets import build_data
 from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
-from models.base import SetupContext
 from registry import EXPERIMENTS
-from runtime import NUM_TRAIN, device
-from tasks.classification import ClassificationTask
+from runtime import device
 from training.evaluator import evaluate
 from training.strategy import TrainingStrategy, build_strategy
 from training.train import train
@@ -90,7 +89,6 @@ class ExperimentRunner:
     def __init__(
         self,
         cfg: TrainConfig,
-        dataset_name: str,
         batch_size: int,
         strategy: TrainingStrategy | None = None,
         resume_path: str | None = None,
@@ -99,15 +97,17 @@ class ExperimentRunner:
         num_train: int | None = None,
     ) -> None:
         self.cfg = cfg
-        self.dataset_name = dataset_name
         self.batch_size = batch_size
         self.resume_path = resume_path
         self.num_train = num_train
         self.strategy = strategy if strategy is not None else build_strategy(device)
 
+        exp = EXPERIMENTS[cfg.experiment]
+        self.dataset_name = exp["data"]
+
         self.artifacts = RunArtifacts.create(
             cfg=cfg,
-            dataset_name=dataset_name,
+            dataset_name=self.dataset_name,
             batch_size=batch_size,
             strategy=self.strategy,
             resume_path=resume_path,
@@ -115,36 +115,22 @@ class ExperimentRunner:
             checkpoints_dir=checkpoints_dir,
         )
 
-        # TODO: this if-fork is a temporary shape.
-        # Captioning needs a data-dependent model (vocab_size from tokenizer),
-        # so it exposes a `setup(ctx)` classmethod that builds
-        # (model, task, loaders) together. Plain classifiers use the
-        # default path below. When a third setup-style model appears,
-        # extract this into experiment/builder.py.
-        model_cls, _ = EXPERIMENTS[self.cfg.experiment]
+        # Data first: build the bundle
+        ctx = DataContext(
+            batch_size=batch_size,
+            num_train=num_train,
+            strategy=self.strategy,
+        )
+        self.bundle = build_data(self.dataset_name, ctx)
 
-        if hasattr(model_cls, "setup"):
-            ctx = SetupContext(
-                cfg=self.cfg,
-                dataset_name=self.dataset_name,
-                batch_size=self.batch_size,
-                num_train=self.num_train,
-            )
-            bundle = model_cls.setup(ctx)
-            self.model = self.strategy.wrap_model(bundle.model, device)
-            self.task = bundle.task
-            self.loader_train = bundle.loader_train
-            self.loader_val = bundle.loader_val
-            self.loader_test = bundle.loader_test
-        else:
-            self.loader_train, self.loader_val, self.loader_test = build_loaders(
-                name=self.dataset_name,
-                batch_size=self.batch_size,
-                num_train=self.num_train if self.num_train is not None else NUM_TRAIN,
-                strategy=self.strategy,
-            )
-            self.model = self._build_model()
-            self.task = ClassificationTask()
+        # Model and task adapt themselves to the data
+        raw_model = exp["model"].from_data(self.bundle)
+        self.model = self.strategy.wrap_model(raw_model, device)
+        self.task = exp["task"].from_data(self.bundle)
+
+        self.loader_train = self.bundle.loader_train
+        self.loader_val = self.bundle.loader_val
+        self.loader_test = self.bundle.loader_test
 
         self.optimizer = self._build_optimizer()
         self.scheduler, self.scheduler_mode = _build_scheduler(
@@ -153,19 +139,6 @@ class ExperimentRunner:
         self.start_epoch, self.best_acc = self._maybe_resume()
 
     # ---------- construction ----------
-
-    def _build_loaders(self) -> tuple[torch.utils.data.DataLoader, ...]:
-        return build_loaders(
-            name=self.dataset_name,
-            batch_size=self.batch_size,
-            num_train=self.num_train if self.num_train is not None else NUM_TRAIN,
-            strategy=self.strategy,
-        )
-
-    def _build_model(self) -> torch.nn.Module:
-        model_cls, _ = EXPERIMENTS[self.cfg.experiment]
-        model = model_cls()
-        return self.strategy.wrap_model(model, device)
 
     def _build_optimizer(self) -> optim.Optimizer:
         if self.cfg.optimizer == "adamw":
@@ -272,6 +245,9 @@ class ExperimentRunner:
                 "epoch": result["last_epoch"],
                 "best_acc": result["best_acc"],
                 "config": dataclasses.asdict(self.cfg),
+                # Self-contained reconstruction info
+                "model_init": self.bundle.model_init,
+                "extras": self.bundle.extras,
             },
             self.artifacts.ckpt_path,
         )

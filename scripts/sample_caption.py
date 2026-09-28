@@ -24,7 +24,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint", type=str, required=True)
     parser.add_argument("--image", type=str, required=True)
     parser.add_argument("--max-new-tokens", type=int, default=32)
-    parser.add_argument("--tokenizer", type=str, default="tiktoken")
     return parser.parse_args()
 
 
@@ -38,13 +37,14 @@ def main() -> None:
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    tokenizer = build_tokenizer(args.tokenizer)
-
-    model = CaptioningModel(
-        vocab_size=tokenizer.vocab_size,
-        pad_id=tokenizer.pad_id,
-    )
     ckpt = torch.load(checkpoint_path, map_location=device)
+
+    # Reconstruct tokenizer from checkpoint metadata
+    tokenizer_name = ckpt["extras"]["tokenizer_name"]
+    tokenizer = build_tokenizer(tokenizer_name)
+
+    # Reconstruct model from checkpoint metadata
+    model = CaptioningModel(**ckpt["model_init"])
     model.load_state_dict(ckpt["model"])
     model = model.to(device)
     model.eval()

@@ -2,14 +2,19 @@
 
 import pytest
 
-from data.datasets import build_loaders
+from data.bundle import DataContext
+from data.datasets import build_data
 
 pytestmark = pytest.mark.integration
 
 
-def test_build_loaders_real(require_integration, require_cifar10) -> None:
-    """Full pipeline: dataset files → DataLoader."""
-    loader_train, loader_val, loader_test = build_loaders(name="cifar10", batch_size=64)
-    x, y = next(iter(loader_train))
+def test_build_data_real(require_integration, require_cifar10) -> None:
+    """Full pipeline: dataset files → DataBundle."""
+    bundle = build_data(
+        "cifar10",
+        DataContext(batch_size=64),
+    )
+    x, y = next(iter(bundle.loader_train))
     assert x.shape == (64, 3, 32, 32)
     assert y.shape == (64,)
+    assert bundle.model_init == {"num_classes": 10}

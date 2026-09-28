@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from data.datasets import DATASET_REGISTRY, DatasetInfo
+from data.datasets import DATASET_INFO, DatasetInfo
 
 
 @pytest.fixture
@@ -51,13 +51,11 @@ def any_experiment() -> str:
     return next(iter(EXPERIMENTS))
 
 
-@pytest.fixture(params=list(DATASET_REGISTRY.keys()))
+@pytest.fixture(params=list(DATASET_INFO.keys()))
 def dataset_name(request: pytest.FixtureRequest) -> str:
-    return request.param
+    return request.param  # type: ignore[no-any-return]
 
 
 @pytest.fixture
 def dataset_info(dataset_name: str) -> DatasetInfo:
-    """Resolve dataset_name → DatasetInfo."""
-    _, info = DATASET_REGISTRY[dataset_name]
-    return info
+    return DATASET_INFO[dataset_name]

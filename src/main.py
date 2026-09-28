@@ -13,7 +13,6 @@ def main() -> None:
     strategy = build_strategy(device)
     runner = ExperimentRunner(
         cfg=cfg,
-        dataset_name=args.dataset,
         batch_size=args.batch_size,
         strategy=strategy,
         resume_path=args.resume,

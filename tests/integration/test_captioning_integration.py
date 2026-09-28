@@ -1,26 +1,21 @@
-"""Integration tests for captioning setup with real Flickr8k data."""
+"""Integration tests for captioning with real Flickr8k data."""
 
 import pytest
 
-from experiment.config import TrainConfig
-from models.base import SetupContext
+from data.bundle import DataContext
+from data.datasets import build_data
 from models.captioning import CaptioningModel
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.skip(reason="requires Flickr8k + network (tiktoken); run manually")
-def test_setup_returns_bundle() -> None:
-    """setup() returns (model, task, loaders) with consistent vocab."""
-    cfg = TrainConfig(experiment="captioning", epochs=1)
-    ctx = SetupContext(
-        cfg=cfg,
-        dataset_name="flickr8k",
-        batch_size=8,
-        num_train=10,
+def test_captioning_bundle_and_model(require_flickr8k) -> None:
+    """build_data(flickr8k) + CaptioningModel.from_data work together."""
+    bundle = build_data(
+        "flickr8k",
+        DataContext(batch_size=4, num_train=2),
     )
-    bundle = CaptioningModel.setup(ctx)
+    model = CaptioningModel.from_data(bundle)
 
-    assert isinstance(bundle.model, CaptioningModel)
-    assert bundle.task is not None
-    assert bundle.loader_train is not None
+    assert model.lm_head.out_features == bundle.model_init["vocab_size"]
+    assert "tokenizer_name" in bundle.extras

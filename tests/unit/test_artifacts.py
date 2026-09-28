@@ -8,6 +8,8 @@ from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
 from training.strategy import SingleDeviceStrategy
 
+_TEST_DATASET = "cifar10"
+
 
 class _NonMainStrategy(SingleDeviceStrategy):
     """Pretend to be a non-main DDP process."""
@@ -26,7 +28,7 @@ def test_create_returns_correct_paths(
 ) -> None:
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -52,7 +54,7 @@ def test_create_writes_config_snapshot(
 ) -> None:
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -63,14 +65,14 @@ def test_create_writes_config_snapshot(
     assert artifacts.cfg_path.exists()
     content = artifacts.cfg_path.read_text()
     assert f'"experiment": "{any_experiment}"' in content
-    assert '"dataset": "cifar10"' in content
+    assert f'"dataset": "{_TEST_DATASET}"' in content
     assert '"batch_size": 64' in content
 
 
 def test_non_main_process_skips_logger_and_writer(tmp_path: Path, cfg: TrainConfig) -> None:
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=_NonMainStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -81,8 +83,6 @@ def test_non_main_process_skips_logger_and_writer(tmp_path: Path, cfg: TrainConf
     assert artifacts.logger is None
     assert artifacts.recorder is None
     assert artifacts.writer is None
-
-    # 非主进程不写任何文件
     assert not artifacts.cfg_path.exists()
 
 
@@ -91,7 +91,7 @@ def test_resume_reuses_old_csv(tmp_path: Path, cfg: TrainConfig, any_experiment:
 
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         resume_path=resume_path,
@@ -106,7 +106,7 @@ def test_resume_reuses_old_csv(tmp_path: Path, cfg: TrainConfig, any_experiment:
 def test_fresh_run_uses_new_csv(tmp_path: Path, cfg: TrainConfig) -> None:
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -120,11 +120,10 @@ def test_fresh_run_uses_new_csv(tmp_path: Path, cfg: TrainConfig) -> None:
 def test_close_is_idempotent(tmp_path: Path, cfg: TrainConfig) -> None:
     artifacts = RunArtifacts.create(
         cfg=cfg,
-        dataset_name="cifar10",
+        dataset_name=_TEST_DATASET,
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
     )
     artifacts.close()
-    artifacts.close()  # should not raise

@@ -1,14 +1,20 @@
+"""Tests for dataset registry."""
+
 import pytest
 
-from data.datasets import DATASET_REGISTRY
+from data.datasets import DATASET_REGISTRY, build_data
 
 
-def test_registry_has_cifar10():
+def test_registry_has_cifar10() -> None:
     assert "cifar10" in DATASET_REGISTRY
 
 
-def test_unknown_dataset_raises():
-    from data.datasets import build_loaders
+def test_registry_has_flickr8k() -> None:
+    assert "flickr8k" in DATASET_REGISTRY
 
-    with pytest.raises(ValueError):
-        build_loaders(name="no_such_dataset")
+
+def test_unknown_dataset_raises() -> None:
+    from data.bundle import DataContext
+
+    with pytest.raises(ValueError, match="Unknown dataset"):
+        build_data("nope", DataContext(batch_size=4))

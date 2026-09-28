@@ -12,7 +12,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--experiment", type=str, default=DEFAULT_EXPERIMENT, choices=list(EXPERIMENTS.keys())
     )
-    parser.add_argument("--dataset", type=str, default="cifar10")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=None)
@@ -38,7 +37,7 @@ def parse_args() -> argparse.Namespace:
 
 def build_config(args: argparse.Namespace) -> TrainConfig:
     """Adapt CLI Namespace → TrainConfig."""
-    _, default_lr = EXPERIMENTS[args.experiment]
+    default_lr = EXPERIMENTS[args.experiment]["lr"]
     lr = args.learning_rate if args.learning_rate is not None else default_lr
     return TrainConfig(
         experiment=args.experiment,

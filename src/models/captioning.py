@@ -10,10 +10,13 @@ This is the simplest thing that works for captioning. Training is teacher-forced
     target_ids = [c1, c2, ..., c_N, EOS]
 """
 
+from typing import TYPE_CHECKING
+
 import torch
 import torch.nn as nn
 
-from models.base import ExperimentBundle, SetupContext
+if TYPE_CHECKING:
+    from data.bundle import DataBundle
 
 
 class ImageEncoder(nn.Module):
@@ -76,7 +79,6 @@ class CaptioningModel(nn.Module):
     """Full captioning model: image encoder + text decoder."""
 
     # Tokenizer backend name. Change to "sp" after training SentencePiece.
-    tokenizer_name: str = "tiktoken"
 
     def __init__(
         self,
@@ -208,34 +210,6 @@ class CaptioningModel(nn.Module):
         return generated
 
     @classmethod
-    def setup(cls, ctx: SetupContext) -> ExperimentBundle:
-        """Build (model, task, loaders) for captioning.
-
-        Deferred imports avoid top-level circular deps:
-        models → data → tasks → models
-        """
-        from data.flickr8k import build_captioning_loaders
-        from data.tokenizers import build_tokenizer
-        from tasks.captioning import CaptioningTask
-        from utils.path import DATASETS_PATH
-
-        tokenizer = build_tokenizer(cls.tokenizer_name)
-        loader_train, loader_val, loader_test = build_captioning_loaders(
-            root=DATASETS_PATH,
-            tokenizer=tokenizer,
-            batch_size=ctx.batch_size,
-            num_train=ctx.num_train,
-        )
-        model = cls(
-            vocab_size=tokenizer.vocab_size,
-            pad_id=tokenizer.pad_id,
-        )
-        task = CaptioningTask()
-
-        return ExperimentBundle(
-            model=model,
-            task=task,
-            loader_train=loader_train,
-            loader_val=loader_val,
-            loader_test=loader_test,
-        )
+    def from_data(cls, bundle: "DataBundle") -> "CaptioningModel":
+        """Build CaptioningModel using construction info from the dataset."""
+        return cls(**bundle.model_init)

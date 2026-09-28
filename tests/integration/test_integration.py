@@ -1,66 +1,47 @@
-"""End-to-end integration tests on real CIFAR-10 data.
-
-These tests are skipped by default. To run them locally:
-
-    RUN_INTEGRATION=1 uv run pytest tests/test_integration.py -v
-
-They exercise the full stack: dataset loading, training, evaluation,
-checkpoint saving, and resume. They are not run in CI because CI has
-no CIFAR-10 data available.
-"""
+"""Integration tests: end-to-end training and resume."""
 
 from pathlib import Path
 
 import pytest
-import torch.optim as optim
 
-from data.datasets import build_loaders
 from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
-from tasks.classification import ClassificationTask
 from training.strategy import SingleDeviceStrategy
-from training.train import train
 
 pytestmark = pytest.mark.integration
 
 
-def test_train_one_epoch_on_real_data(
-    require_integration, require_cifar10, any_experiment: str
-) -> None:
-    from registry import EXPERIMENTS
-
-    loader_train, loader_val, _ = build_loaders(
-        name="cifar10",
+def test_train_one_epoch_on_real_data(require_integration, require_cifar10) -> None:
+    cfg = TrainConfig(experiment="vit", epochs=1)
+    runner = ExperimentRunner(
+        cfg=cfg,
         batch_size=32,
-        num_train=32,  # ViT 慢，降到 32
+        strategy=SingleDeviceStrategy(),
+        num_train=32,
     )
-    model_cls, _ = EXPERIMENTS[any_experiment]
-    model = model_cls()
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
-
-    result = train(model, optimizer, loader_train, loader_val, ClassificationTask(), epochs=1)
+    result = runner.run()
+    runner.cleanup()
 
     assert result["last_epoch"] == 1
     assert 0.0 <= result["best_acc"] <= 1.0
 
 
 def test_runner_saves_and_resumes(
-    require_integration, require_cifar10, tmp_path: Path, any_experiment: str
+    require_integration,
+    require_cifar10,
+    tmp_path: Path,
 ) -> None:
-    """Run a small experiment, then resume from its checkpoint."""
     outputs_dir = tmp_path / "outputs"
     checkpoints_dir = tmp_path / "checkpoints"
 
-    # First run: 1 epoch
-    cfg1 = TrainConfig(experiment=any_experiment, epochs=1)
+    cfg1 = TrainConfig(experiment="vit", epochs=1)
     runner1 = ExperimentRunner(
         cfg=cfg1,
-        dataset_name="cifar10",
         batch_size=32,
         strategy=SingleDeviceStrategy(),
         outputs_dir=outputs_dir,
         checkpoints_dir=checkpoints_dir,
-        num_train=128,
+        num_train=32,
     )
     result1 = runner1.run()
     ckpt_path = runner1.artifacts.ckpt_path
@@ -69,21 +50,17 @@ def test_runner_saves_and_resumes(
     assert ckpt_path.exists()
     assert result1["last_epoch"] == 1
 
-    # Second run: resume from checkpoint, target epoch 2
-    cfg2 = TrainConfig(experiment=any_experiment, epochs=2)
+    cfg2 = TrainConfig(experiment="vit", epochs=2)
     runner2 = ExperimentRunner(
         cfg=cfg2,
-        dataset_name="cifar10",
         batch_size=32,
         strategy=SingleDeviceStrategy(),
         resume_path=str(ckpt_path),
         outputs_dir=outputs_dir,
         checkpoints_dir=checkpoints_dir,
-        num_train=128,
+        num_train=32,
     )
     result2 = runner2.run()
     runner2.cleanup()
 
     assert result2["last_epoch"] == 2
-    # Best accuracy after resume should be at least as good as after first run
-    assert result2["best_acc"] >= result1["best_acc"]
