@@ -1,83 +1,54 @@
 # TODO
 
-## DevOps 阶段
+## 短期（按优先级）
+## 短期（按优先级）
 
-- [x] CI（GitHub Actions）
-  - [x] 自动跑 pytest
-  - [x] 自动跑 ruff + mypy
-  - [x] README 加 CI 徽章（待加）
-- [x] Docker（推理镜像）
-  - [x] `../docker/Dockerfile.serve`
-  - [x] `../.dockerignore`
-- [x] Docker（训练镜像）
-  - [x] `../docker/Dockerfile.train`（GPU 版）
-  - [x] 支持挂载 `../datasets` 和 `../checkpoints`
-  - [x] 验证：`docker run` 训练 1 epoch
-- [x] 分布式训练 DDP
-  - [x] `DistributedDataParallel` 支持
-  - [x] `torchrun --nproc_per_node=1` 验证（4070 上跑通）
-- [ ] docker-compose 多服务
-  - [ ] 加数据库 / 前端等其他服务
-- [ ] docker-compose 多服务
-  - [ ] 加数据库 / 前端等其他服务
+- [ ] **评估层**：BLEU / CIDEr / METEOR / ROUGE（半天）
+- [ ] **LLaVA 推理脚本**（1 天，撞 framework 缺口）
+- [ ] **评估层**：BLEU / CIDEr / METEOR / ROUGE
+  - 从 `CaptioningTask.eval_step` 输出
+  - 依赖 `pycocoevalcap` 或 `nltk`
+- [ ] **LLaVA 推理脚本**（撞 framework 缺口）
+  - `scripts/llava_infer.py`：加载 HF 权重（4bit 量化）
+  - 不改 framework，先跑通推理
+- [ ] **Logger 级别系统**（NONE / ERROR / INFO / FLOW / DEBUG）
+  - 环境变量 `VISIONFORGE_LOG_LEVEL` 控制
+  - 用途：NaN 排查、静音跑 benchmark
+  - 详见 `architecture-notes.md`
 
-## 打磨阶段
+## 中期（撞到需求再做）
 
-- [x] 版本号单一来源（`importlib.metadata`）
-- [x] 集成测试（训练 1 步不报错）
-- [x] 回归测试（精度不低于基线）
-- [ ] CHANGELOG.md（Keep a Changelog 格式）
+- [ ] 加载预训练权重（CLIP / HF）
+- [ ] KV cache（生成式推理）
+- [ ] 量化（int8 / 4bit / bnb）
+- [ ] 参数冻结 + LoRA 骨架
+- [ ] 多阶段训练（对齐 + 指令微调）
+- [ ] AMP 实测（大模型）
+
+## 长期（做完整 LLaVA / LM 训练时）
+
+- [ ] 数据缓存（tokenized 结果存盘）
+- [ ] packed sequence（多句拼接）
+- [ ] vLLM / TGI 集成
+- [ ] FSDP / DeepSpeed
+- [ ] 多机多卡（跨机 DDP）
+
+## 工程细节
+
+- [ ] `from_data` 优化（`DatasetInfo` 合并到 `DataBundle`）
+- [ ] Trainer 类重构（等第 3 类任务撞出需求）
+- [ ] `CHANGELOG.md`（Keep a Changelog 格式）
 - [ ] 覆盖率报告（pytest-cov）
 - [ ] CI 矩阵（Python 3.12 + 3.13）
-- [ ] API 文档（mkdocs / pdoc）
-- [ ] `setuptools-scm` 从 git tag 自动生成版本（可选）
-
-## 算法方向
-
-- [ ] 学习率 warmup
-- [ ] MixUp / CutMix
-- [ ] RandAugment
-- [ ] 知识蒸馏
-- [ ] ResNet / EfficientNet
-- [ ] 更多数据集（MNIST / FashionMNIST）
 
 ## 可选
 
 - [ ] TensorBoard 远端服务器
 - [ ] WandB 集成
 - [ ] MLflow 实验管理
+- [ ] mkdocs / pdoc API 文档
 
-## Logger 级别系统（待下次真实需求驱动）
+## 已排除
 
-### 背景
-
-当前 `log()` 无级别区分——所有信息挤在 INFO。场景：
-
-- 跑 benchmark 想静音 → 只能删代码或改 `PRINT_EVERY`
-- 排查 NaN 想更细 → 已是最细
-- 盯 epoch 进度 → batch 日志在刷屏
-
-### 目标
-
-引入 5 级 logger，参考公司实践：
-
-| 级别 | 语义 | 用途 |
-|---|---|---|
-| **NONE** | 关闭 | 生产 / 快速跑 |
-| **ERROR** | 只留错误 | 容忍噪音 |
-| **INFO** | 正常信息 | 默认 |
-| **FLOW** | 流程事件 | epoch 开始/结束、保存、resume |
-| **DEBUG** | 详细诊断 | NaN 排查、逐步追踪 |
-
-**用法**：
-
-```python
-logger.flow(f"Epoch {e} start")
-logger.info(f"Epoch {e} done, loss={...}")
-logger.debug(f"Batch {t}: loss={loss:.6f}, grad_norm={gn:.4f}")
-logger.error(f"NaN detected at batch {t}")
-```
-```bash
-VISIONFORGE_LOG_LEVEL=none make train ...     # 静音
-VISIONFORGE_LOG_LEVEL=debug make train ...    # 排查
-```
+- [x] HF Tokenizer 适配（不想绑 HF 生态）
+- [x] Serving `/caption` 端点（会被 vLLM 替代，死路）

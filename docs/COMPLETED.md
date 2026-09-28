@@ -3,6 +3,38 @@
 已完成的工作记录。按时间倒序。
 
 ---
+## v0.1.1 — 2026-09-28
+
+### 阶段 13：训练层能力 + 数据先行架构
+
+- [x] **训练层 4 个能力**
+  - 优化器抽象（SGD / AdamW）
+  - 学习率调度（warmup + cosine，step 级）
+  - 梯度累积（`accum_steps`）
+  - 梯度裁剪（`grad_clip`）
+  - `TrainConfig` 加 5 字段，向后兼容
+- [x] **数据先行架构**（`from_data`）
+  - `data/bundle.py`：`DataBundle` + `DataContext`
+  - `build_data(name, ctx)` → `DataBundle`
+  - `model_cls.from_data(bundle)` / `task_cls.from_data(bundle)`
+  - 注册表 dict 格式（含 `category`）
+  - Runner 无 if 分支
+  - 删除 `models/base.py`
+- [x] **Checkpoint 自包含**
+  - 保存 `model_init` + `extras`
+  - `sample_caption.py` 从 checkpoint 重建，不再需要 `--tokenizer`
+- [x] **Makefile 更新**
+  - 新参数：`NUM` / `OPT` / `WD` / `WARMUP` / `ACCUM` / `CLIP`
+  - `TRAIN_ARGS` 变量复用
+- [x] **README 重写**
+  - 数据先行架构
+  - Checkpoint 自包含说明
+  - 扩展指南（模型 / 数据集 / 任务）
+
+**验收**：
+- 加模型：改 2 文件（`models/xxx.py` + `registry.py`）
+- 加 dataset：改 2 文件（`data/xxx.py` + `datasets.py`）
+- Checkpoint 自包含：可从 `.pt` 独立重建模型
 
 ## v0.1.1 — 2026-09-26
 
