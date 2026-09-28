@@ -28,6 +28,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume", type=str, default=None)
     parser.add_argument("--amp", action="store_true")
     parser.add_argument("--num-train", type=int, default=None)
+    parser.add_argument("--optimizer", type=str, default="sgd", choices=["sgd", "adamw"])
+    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--warmup-steps", type=int, default=0)
+    parser.add_argument("--accum-steps", type=int, default=1)
+    parser.add_argument("--grad-clip", type=float, default=0.0)
     return parser.parse_args()
 
 
@@ -47,4 +52,9 @@ def build_config(args: argparse.Namespace) -> TrainConfig:
         gamma=args.gamma,
         early_stop_patience=args.early_stop_patience,
         amp=args.amp,
+        optimizer=args.optimizer,
+        weight_decay=args.weight_decay,
+        warmup_steps=args.warmup_steps,
+        accum_steps=args.accum_steps,
+        grad_clip=args.grad_clip,
     )

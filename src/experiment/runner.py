@@ -16,6 +16,7 @@ Under DDP, only the main process writes logs/checkpoints. The actual
 """
 
 import dataclasses
+import math
 from pathlib import Path
 
 import torch
@@ -41,13 +42,46 @@ def _unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def _build_scheduler(
-    optimizer: optim.Optimizer, cfg: TrainConfig
-) -> lr_scheduler.LRScheduler | None:
+    optimizer: optim.Optimizer,
+    cfg: TrainConfig,
+    steps_per_epoch: int,
+) -> tuple[lr_scheduler.LRScheduler | None, str]:
+    """Build a scheduler. Returns (scheduler, mode).
+
+    mode = "step": scheduler.step() is called every batch
+    mode = "epoch": scheduler.step() is called every epoch
+
+    When `warmup_steps > 0`, we use a step-level LambdaLR that combines
+    warmup + (optional) cosine decay. Otherwise, the classic epoch-level
+    schedulers are used.
+    """
+    total_steps = cfg.epochs * steps_per_epoch
+
+    # Step-level path: warmup (+ optional cosine)
+    if cfg.warmup_steps > 0:
+
+        def lr_lambda(step: int) -> float:
+            if step < cfg.warmup_steps:
+                return step / max(1, cfg.warmup_steps)
+            if cfg.lr_scheduler == "cosine":
+                progress = (step - cfg.warmup_steps) / max(1, total_steps - cfg.warmup_steps)
+                return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
+            return 1.0
+
+        return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda), "step"
+
+    # Epoch-level path (existing behavior)
     if cfg.lr_scheduler == "step":
-        return optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma)
+        return (
+            optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma),
+            "epoch",
+        )
     if cfg.lr_scheduler == "cosine":
-        return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
-    return None
+        return (
+            optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs),
+            "epoch",
+        )
+    return None, "epoch"
 
 
 class ExperimentRunner:
@@ -113,7 +147,9 @@ class ExperimentRunner:
             self.task = ClassificationTask()
 
         self.optimizer = self._build_optimizer()
-        self.scheduler = _build_scheduler(self.optimizer, cfg)
+        self.scheduler, self.scheduler_mode = _build_scheduler(
+            self.optimizer, cfg, steps_per_epoch=len(self.loader_train)
+        )
         self.start_epoch, self.best_acc = self._maybe_resume()
 
     # ---------- construction ----------
@@ -132,12 +168,20 @@ class ExperimentRunner:
         return self.strategy.wrap_model(model, device)
 
     def _build_optimizer(self) -> optim.Optimizer:
-        return optim.SGD(
-            self.model.parameters(),
-            lr=self.cfg.learning_rate,
-            momentum=self.cfg.momentum,
-            nesterov=self.cfg.nesterov,
-        )
+        if self.cfg.optimizer == "adamw":
+            return optim.AdamW(
+                self.model.parameters(),
+                lr=self.cfg.learning_rate,
+                weight_decay=self.cfg.weight_decay,
+            )
+        if self.cfg.optimizer == "sgd":
+            return optim.SGD(
+                self.model.parameters(),
+                lr=self.cfg.learning_rate,
+                momentum=self.cfg.momentum,
+                nesterov=self.cfg.nesterov,
+            )
+        raise ValueError(f"Unknown optimizer: {self.cfg.optimizer}")
 
     def _maybe_resume(self) -> tuple[int, float]:
         if self.resume_path is None:
@@ -171,6 +215,9 @@ class ExperimentRunner:
             self.task,
             epochs=self.cfg.epochs,
             scheduler=self.scheduler,
+            scheduler_mode=self.scheduler_mode,
+            accum_steps=self.cfg.accum_steps,
+            grad_clip=self.cfg.grad_clip,
             early_stop_patience=self.cfg.early_stop_patience,
             start_epoch=self.start_epoch,
             best_acc=self.best_acc,

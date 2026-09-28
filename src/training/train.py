@@ -22,6 +22,9 @@ def train(
     task: Task,
     epochs: int = 1,
     scheduler: lr_scheduler.LRScheduler | None = None,
+    scheduler_mode: str = "epoch",
+    accum_steps: int = 1,
+    grad_clip: float = 0.0,
     early_stop_patience: int = 0,
     start_epoch: int = 1,
     best_acc: float = 0.0,
@@ -60,23 +63,34 @@ def train(
 
         running_loss = 0.0
         n_batches = 0
+        optimizer.zero_grad()
 
         for t, batch in enumerate(loader_train):
             model.train()
-            optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=amp_enabled):
                 loss = task.train_step(model, batch, device, DTYPE)
+                loss = loss / accum_steps
 
             scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
 
-            running_loss += loss.item()
+            # Step only after accumulating accum_steps gradients
+            if (t + 1) % accum_steps == 0:
+                if grad_clip > 0:
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()
+
+                if scheduler is not None and scheduler_mode == "step":
+                    scheduler.step()
+
+            running_loss += loss.item() * accum_steps  # un-normalize for logging
             n_batches += 1
 
             if t % PRINT_EVERY == 0:
-                log(f"Epoch {e}, Iter {t}, loss = {loss.item():.4f}")
+                log(f"Epoch {e}, Iter {t}, loss = {loss.item() * accum_steps:.4f}")
 
         avg_loss = running_loss / max(n_batches, 1)
         lr_now = optimizer.param_groups[0]["lr"]
@@ -100,7 +114,8 @@ def train(
             writer.add_scalar("lr", lr_now, e)
 
         if scheduler is not None:
-            scheduler.step()
+            if scheduler_mode == "epoch":
+                scheduler.step()
             log(f"  LR -> {optimizer.param_groups[0]['lr']:.6g}")
 
         if is_main():
