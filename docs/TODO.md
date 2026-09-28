@@ -46,3 +46,38 @@
 - [ ] TensorBoard 远端服务器
 - [ ] WandB 集成
 - [ ] MLflow 实验管理
+
+## Logger 级别系统（待下次真实需求驱动）
+
+### 背景
+
+当前 `log()` 无级别区分——所有信息挤在 INFO。场景：
+
+- 跑 benchmark 想静音 → 只能删代码或改 `PRINT_EVERY`
+- 排查 NaN 想更细 → 已是最细
+- 盯 epoch 进度 → batch 日志在刷屏
+
+### 目标
+
+引入 5 级 logger，参考公司实践：
+
+| 级别 | 语义 | 用途 |
+|---|---|---|
+| **NONE** | 关闭 | 生产 / 快速跑 |
+| **ERROR** | 只留错误 | 容忍噪音 |
+| **INFO** | 正常信息 | 默认 |
+| **FLOW** | 流程事件 | epoch 开始/结束、保存、resume |
+| **DEBUG** | 详细诊断 | NaN 排查、逐步追踪 |
+
+**用法**：
+
+```python
+logger.flow(f"Epoch {e} start")
+logger.info(f"Epoch {e} done, loss={...}")
+logger.debug(f"Batch {t}: loss={loss:.6f}, grad_norm={gn:.4f}")
+logger.error(f"NaN detected at batch {t}")
+```
+```bash
+VISIONFORGE_LOG_LEVEL=none make train ...     # 静音
+VISIONFORGE_LOG_LEVEL=debug make train ...    # 排查
+```
