@@ -49,7 +49,7 @@ help:
 	@echo "  make board                TensorBoard on outputs/"
 	@echo "  make export               export checkpoint to ONNX"
 	@echo "      EXP=vit [CKPT=path] [OUT=path] [OPSET=17]"
-    @echo "      ... NUM=128 (limit training samples)"
+	@echo "      ... NUM=128 (limit training samples)"
 	@echo "  make serve                FastAPI inference server"
 	@echo "      ONNX=exports/vit.onnx PORT=8000"
 	@echo "  make sample               generate caption for an image"
@@ -95,8 +95,8 @@ TRAIN_ARGS = \
 	--experiment $(EXP) \
 	--epochs $(EPOCHS) \
 	--batch-size $(BS) \
-	$(if $(NUM),--num-train $(NUM),) \
-	$(if $(LR),--learning-rate $(LR),) \
+    $(if $(NUM),--num-train $(NUM),) \
+    $(if $(LR),--learning-rate $(LR),) \
 	$(if $(RESUME),--resume $(RESUME),) \
 	$(if $(AMP),--amp,) \
 	$(if $(OPT),--optimizer $(OPT),) \
