@@ -50,11 +50,8 @@ class TrainingStrategy:
         """
         return True
 
-    def set_epoch(self, epoch: int) -> None:
-        """Hook called at the start of every epoch.
-
-        DDP uses it to reshuffle the DistributedSampler.
-        """
+    def on_epoch_start(self, epoch: int) -> None:
+        """Hook called at the start of every epoch."""
         return
 
     def cleanup(self) -> None:
@@ -114,7 +111,7 @@ class DDPStrategy(TrainingStrategy):
     def is_main_process(self) -> bool:
         return self.rank == 0
 
-    def set_epoch(self, epoch: int) -> None:
+    def on_epoch_start(self, epoch: int) -> None:
         if self._train_sampler is not None:
             self._train_sampler.set_epoch(epoch)
 

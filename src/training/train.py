@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from runtime import DTYPE, PRINT_EVERY, device
 from tasks.base import Task
 from training.evaluator import evaluate
-from training.strategy import TrainingStrategy
+from training.strategy import SingleDeviceStrategy, TrainingStrategy
 from utils.logger import CSVRecorder
 
 
@@ -34,7 +34,15 @@ def train(
     writer: SummaryWriter | None = None,
     strategy: TrainingStrategy | None = None,
 ) -> dict[str, float | int]:
-    model = model.to(device=device)
+    """Train a model for the configured number of epochs.
+
+    `model` must already be on the target device
+    (`ExperimentRunner` moves it via `strategy.wrap_model`).
+    """
+    # Normalize: framework owns the default.
+    if strategy is None:
+        strategy = SingleDeviceStrategy()
+
     best_state: dict[str, torch.Tensor] | None = None
     epochs_no_improve = 0
     last_epoch = start_epoch - 1
@@ -43,14 +51,13 @@ def train(
     if not task.higher_is_better and best_acc == 0.0:
         best_acc = float("inf")
 
+    # ---- one-time setup (not part of the loop) ----
     amp_enabled = use_amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
-
-    def is_main() -> bool:
-        return strategy is None or strategy.is_main_process()
+    # ------------------------------------------------
 
     def log(msg: str) -> None:
-        if not is_main():
+        if not strategy.is_main_process():
             return
         if logger is not None:
             logger.info(msg)
@@ -58,9 +65,7 @@ def train(
             print(msg)
 
     for e in range(start_epoch, epochs + 1):
-        if strategy is not None:
-            strategy.set_epoch(e)
-
+        strategy.on_epoch_start(e)
         running_loss = 0.0
         n_batches = 0
         optimizer.zero_grad()
@@ -95,7 +100,7 @@ def train(
         avg_loss = running_loss / max(n_batches, 1)
         lr_now = optimizer.param_groups[0]["lr"]
 
-        if is_main():
+        if strategy.is_main_process():
             val_metrics = evaluate(model, loader_val, task)
         else:
             val_metrics = {task.primary_metric: 0.0}
@@ -104,10 +109,10 @@ def train(
         metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in val_metrics.items())
         log(f"Epoch {e} done. avg_train_loss = {avg_loss:.4f}, {metrics_str}")
 
-        if recorder is not None and is_main():
+        if recorder is not None and strategy.is_main_process():
             recorder.log(e, avg_loss, val_metric, lr_now)
 
-        if writer is not None and is_main():
+        if writer is not None and strategy.is_main_process():
             writer.add_scalar("loss/train", avg_loss, e)
             for k, v in val_metrics.items():
                 writer.add_scalar(f"val/{k}", v, e)
@@ -118,7 +123,7 @@ def train(
                 scheduler.step()
             log(f"  LR -> {optimizer.param_groups[0]['lr']:.6g}")
 
-        if is_main():
+        if strategy.is_main_process():
             if task.higher_is_better:
                 is_better = val_metric > best_acc
             else:
@@ -139,7 +144,7 @@ def train(
 
         last_epoch = e
 
-    if best_state is not None and is_main():
+    if best_state is not None and strategy.is_main_process():
         model.load_state_dict(best_state)
 
     log(f"Best {task.primary_metric} = {best_acc:.4f}")

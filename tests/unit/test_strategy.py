@@ -39,9 +39,9 @@ def test_single_device_val_sampler_covers_dataset() -> None:
     assert sorted(sampler) == list(range(16))
 
 
-def test_single_device_set_epoch_is_noop() -> None:
+def test_single_device_on_epoch_start_is_noop() -> None:
     strategy = SingleDeviceStrategy()
-    strategy.set_epoch(5)  # should not raise
+    strategy.on_epoch_start(5)  # should not raise
 
 
 def test_single_device_cleanup_is_noop() -> None:
