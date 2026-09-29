@@ -1,4 +1,4 @@
-import logging
+from typing import TYPE_CHECKING
 
 import torch
 import torch.nn as nn
@@ -12,6 +12,9 @@ from tasks.base import Task
 from training.evaluator import evaluate
 from training.strategy import SingleDeviceStrategy, TrainingStrategy
 from utils.logger import CSVRecorder
+
+if TYPE_CHECKING:
+    from utils.logger import AppLogger
 
 
 def train(
@@ -28,7 +31,7 @@ def train(
     early_stop_patience: int = 0,
     start_epoch: int = 1,
     best_acc: float = 0.0,
-    logger: logging.Logger | None = None,
+    logger: "AppLogger | None" = None,
     recorder: CSVRecorder | None = None,
     use_amp: bool = False,
     writer: SummaryWriter | None = None,

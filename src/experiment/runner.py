@@ -170,8 +170,8 @@ class ExperimentRunner:
         best_acc = ckpt["best_acc"]
 
         if self.artifacts.is_main and self.artifacts.logger is not None:
-            self.artifacts.logger.info("Resumed from %s", self.resume_path)
-            self.artifacts.logger.info("Resume at epoch %d, best_acc = %.4f", start_epoch, best_acc)
+            self.artifacts.logger.info(f"Resumed from {self.resume_path}")
+            self.artifacts.logger.info(f"Resume at epoch {start_epoch}, best_acc = {best_acc:.4f}")
 
         return start_epoch, best_acc
 
@@ -217,10 +217,10 @@ class ExperimentRunner:
             return
         logger = self.artifacts.logger
         logger.info("=" * 60)
-        logger.info("Experiment: %s", self.cfg.experiment)
-        logger.info("Dataset: %s", self.dataset_name)
-        logger.info("Device: %s", device)
-        logger.info("Config: %s", self.cfg)
+        logger.info(f"Experiment: {self.cfg.experiment}")
+        logger.info(f"Dataset: {self.dataset_name}")
+        logger.info(f"Device: {device}")
+        logger.info(f"Config: {self.cfg}")
         logger.info(format_env_info())
         logger.info("=" * 60)
 
@@ -231,7 +231,7 @@ class ExperimentRunner:
         test_metric = test_metrics[self.task.primary_metric]
         if self.artifacts.logger is not None:
             metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())
-            self.artifacts.logger.info("Test %s", metrics_str)
+            self.artifacts.logger.info(f"Test {metrics_str}")
         return test_metric
 
     def _save_checkpoint(self, result: dict[str, float | int]) -> None:
@@ -252,4 +252,4 @@ class ExperimentRunner:
             self.artifacts.ckpt_path,
         )
         if self.artifacts.logger is not None:
-            self.artifacts.logger.info("Saved to %s", self.artifacts.ckpt_path)
+            self.artifacts.logger.info(f"Saved to {self.artifacts.ckpt_path}")

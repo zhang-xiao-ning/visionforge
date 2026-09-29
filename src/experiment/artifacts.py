@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +23,7 @@ from torch.utils.tensorboard import SummaryWriter
 from experiment.config import TrainConfig
 from training.strategy import TrainingStrategy
 from utils.env import get_env_info
-from utils.logger import CSVRecorder, get_logger
+from utils.logger import AppLogger, CSVRecorder, get_logger
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
 
 
@@ -38,7 +37,7 @@ class RunArtifacts:
     ckpt_path: Path
     cfg_path: Path
     tb_dir: Path
-    logger: logging.Logger | None
+    logger: AppLogger | None
     recorder: CSVRecorder | None
     writer: SummaryWriter | None
     is_main: bool
