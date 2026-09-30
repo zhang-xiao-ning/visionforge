@@ -8,7 +8,7 @@ import onnxruntime as ort
 import torch
 import torch.nn as nn
 
-from main import EXPERIMENTS
+from registry import EXPERIMENTS
 from utils.path import CHECKPOINTS_PATH
 
 
@@ -113,7 +113,7 @@ def main() -> None:
         else Path("exports") / f"{args.experiment}.onnx"
     )
 
-    model_cls, _ = EXPERIMENTS[args.experiment]
+    model_cls = EXPERIMENTS[args.experiment]["model"]
 
     print(f"Experiment: {args.experiment}")
     print(f"Checkpoint: {ckpt_path}")

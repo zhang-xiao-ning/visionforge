@@ -1,6 +1,7 @@
 """Pure constants + runtime device detection.
 
-No import side effects. Device is resolved at call time, not import time.
+`get_device()` resolves on demand; the module-level `device` below is
+an import-time snapshot.
 """
 
 import os

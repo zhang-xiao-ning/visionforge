@@ -11,6 +11,7 @@ Everything else (loop, optimizer, AMP, DDP) is task-agnostic.
 """
 
 from tasks.base import Task
+from tasks.captioning import CaptioningTask
 from tasks.classification import ClassificationTask
 
 __all__ = ["Task", "CaptioningTask", "ClassificationTask"]

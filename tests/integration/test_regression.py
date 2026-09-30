@@ -40,7 +40,7 @@ def test_accuracy_above_baseline(
     min_val_acc: float,
     tmp_path,
 ) -> None:
-    _, default_lr = EXPERIMENTS[experiment]
+    default_lr = EXPERIMENTS[experiment]["lr"]
     cfg = TrainConfig(experiment=experiment, epochs=epochs, learning_rate=default_lr)
     runner = ExperimentRunner(
         cfg=cfg,
