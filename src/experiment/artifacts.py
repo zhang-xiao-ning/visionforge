@@ -18,12 +18,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from torch.utils.tensorboard import SummaryWriter
-
 from experiment.config import TrainConfig
 from training.strategy import TrainingStrategy
 from utils.env import get_env_info
-from utils.logger import AppLogger, CSVRecorder, get_logger
+from utils.logger import AppLogger, get_logger
 from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
 
 
@@ -38,8 +36,6 @@ class RunArtifacts:
     cfg_path: Path
     tb_dir: Path
     logger: AppLogger | None
-    recorder: CSVRecorder | None
-    writer: SummaryWriter | None
     is_main: bool
 
     @classmethod
@@ -80,13 +76,14 @@ class RunArtifacts:
         if is_main:
             outputs_dir.mkdir(parents=True, exist_ok=True)
             checkpoints_dir.mkdir(parents=True, exist_ok=True)
-            logger = get_logger(cfg.experiment, log_path)
-            recorder = CSVRecorder(csv_path, append=csv_append)
-            writer = SummaryWriter(log_dir=str(tb_dir))
+            logger = get_logger(
+                cfg.experiment, log_path, csv_path=csv_path, tb_dir=tb_dir, csv_append=csv_append
+            )
         else:
-            logger = None
-            recorder = None
-            writer = None
+            # Worker: text-only, rank-specific file. No CSV, no TB.
+            outputs_dir.mkdir(parents=True, exist_ok=True)
+            worker_log = outputs_dir / f"{base}.rank{strategy.rank}.log"
+            logger = get_logger(f"{cfg.experiment}.rank{strategy.rank}", worker_log)
 
         artifacts = cls(
             base=base,
@@ -96,8 +93,6 @@ class RunArtifacts:
             cfg_path=cfg_path,
             tb_dir=tb_dir,
             logger=logger,
-            recorder=recorder,
-            writer=writer,
             is_main=is_main,
         )
 
@@ -129,5 +124,5 @@ class RunArtifacts:
             json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
     def close(self) -> None:
-        if self.writer is not None:
-            self.writer.close()
+        if self.logger is not None:
+            self.logger.close()

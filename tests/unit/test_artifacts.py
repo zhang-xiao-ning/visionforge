@@ -37,8 +37,6 @@ def test_create_returns_correct_paths(
 
     assert artifacts.is_main is True
     assert artifacts.logger is not None
-    assert artifacts.recorder is not None
-    assert artifacts.writer is not None
 
     assert artifacts.base.startswith(any_experiment)
     assert artifacts.log_path.name == f"{artifacts.base}.log"
@@ -80,9 +78,7 @@ def test_non_main_process_skips_logger_and_writer(tmp_path: Path, cfg: TrainConf
     )
 
     assert artifacts.is_main is False
-    assert artifacts.logger is None
-    assert artifacts.recorder is None
-    assert artifacts.writer is None
+    assert artifacts.logger is not None  # worker now gets its own text-only logger
     assert not artifacts.cfg_path.exists()
 
 

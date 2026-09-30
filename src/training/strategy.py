@@ -31,6 +31,9 @@ class TrainingStrategy:
     - DDPStrategy: N processes via torchrun, one per GPU
     """
 
+    #: Process rank. 0 for single-device; set by DDPStrategy.
+    rank: int = 0
+
     def wrap_model(self, model: nn.Module, device: torch.device) -> nn.Module:
         """Optionally wrap the model (e.g. DDP) and move it to the right device."""
         raise NotImplementedError

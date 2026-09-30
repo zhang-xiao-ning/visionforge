@@ -1,8 +1,7 @@
 """Entry point for training."""
 
 from cli import build_config, parse_args
-from framework import ExperimentRunner, build_strategy, set_seed
-from runtime import device
+from framework import ExperimentRunner, set_seed
 
 
 def main() -> None:
@@ -10,11 +9,9 @@ def main() -> None:
     cfg = build_config(args)
     set_seed(cfg.seed)
 
-    strategy = build_strategy(device)
     runner = ExperimentRunner(
         cfg=cfg,
         batch_size=args.batch_size,
-        strategy=strategy,
         resume_path=args.resume,
         num_train=args.num_train,
     )

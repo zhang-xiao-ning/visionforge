@@ -28,9 +28,11 @@ from data.datasets import build_data
 from experiment.artifacts import RunArtifacts
 from experiment.config import TrainConfig
 from registry import EXPERIMENTS
-from runtime import device
+from runtime import PRINT_EVERY, device
 from training.evaluator import evaluate
+from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy, build_strategy
+from training.tracker import MetricTracker
 from training.train import train
 from utils.env import format_env_info
 
@@ -137,8 +139,50 @@ class ExperimentRunner:
             self.optimizer, cfg, steps_per_epoch=len(self.loader_train)
         )
         self.start_epoch, self.best_acc = self._maybe_resume()
+        self._tracker = MetricTracker(
+            higher_is_better=self.task.higher_is_better,
+            patience=self.cfg.early_stop_patience,
+            initial_best=self.best_acc if self.resume_path else None,
+        )
 
     # ---------- construction ----------
+
+    def _build_hooks(self) -> TrainHooks:
+        """Build hooks. This is the ONLY place that branches on rank."""
+        if not self.strategy.is_main_process():
+            return TrainHooks(logger=self.artifacts.logger)
+
+        logger = self.artifacts.logger
+        assert logger is not None
+        tracker = self._tracker
+
+        def on_step(ctx: StepContext) -> None:
+            if ctx.step % PRINT_EVERY == 0:
+                logger.debug(f"Epoch {ctx.epoch}, Iter {ctx.step}, loss = {ctx.loss:.4f}")
+
+        def on_epoch_end(ctx: EpochContext) -> bool:
+            ctx.val_metrics = evaluate(ctx.model, ctx.loader_val, ctx.task)
+            primary = ctx.val_metrics[ctx.task.primary_metric]
+            metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in ctx.val_metrics.items())
+            logger.flow(
+                f"Epoch {ctx.epoch} done. avg_train_loss = {ctx.avg_loss:.4f}, {metrics_str}"
+            )
+            logger.record(ctx.epoch, ctx.avg_loss, ctx.val_metrics, ctx.task.primary_metric, ctx.lr)
+            return tracker.update(primary, ctx.model)
+
+        def on_train_end() -> None:
+            logger.info(f"Best {self.task.primary_metric} = {tracker.best:.4f}")
+
+        def result() -> dict[str, float]:
+            return {"best_acc": tracker.best}
+
+        return TrainHooks(
+            logger=logger,
+            on_step=on_step,
+            on_epoch_end=on_epoch_end,
+            on_train_end=on_train_end,
+            result=result,
+        )
 
     def _build_optimizer(self) -> optim.Optimizer:
         if self.cfg.optimizer == "adamw":
@@ -179,28 +223,21 @@ class ExperimentRunner:
 
     def run(self) -> dict[str, float]:
         self._log_header()
-
+        hooks = self._build_hooks()
         result = train(
             self.model,
             self.optimizer,
             self.loader_train,
             self.loader_val,
             self.task,
-            epochs=self.cfg.epochs,
+            self.cfg,
+            self.strategy,
+            hooks,
             scheduler=self.scheduler,
             scheduler_mode=self.scheduler_mode,
-            accum_steps=self.cfg.accum_steps,
-            grad_clip=self.cfg.grad_clip,
-            early_stop_patience=self.cfg.early_stop_patience,
             start_epoch=self.start_epoch,
-            best_acc=self.best_acc,
-            logger=self.artifacts.logger,
-            recorder=self.artifacts.recorder,
-            use_amp=self.cfg.amp,
-            writer=self.artifacts.writer,
-            strategy=self.strategy,
         )
-
+        self._tracker.restore(self.model)
         test_acc = self._evaluate_test()
         self._save_checkpoint(result)
 
