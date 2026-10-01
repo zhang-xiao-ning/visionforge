@@ -1,15 +1,12 @@
 """Classification task: cross-entropy loss + accuracy."""
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from tasks.base import Task
-
-if TYPE_CHECKING:
-    from data.bundle import DataBundle
 
 
 class ClassificationTask(Task):
@@ -48,7 +45,3 @@ class ClassificationTask(Task):
             "acc": correct / y.size(0),
             "loss": loss.item(),
         }
-
-    @classmethod
-    def from_data(cls, bundle: "DataBundle") -> "ClassificationTask":
-        return cls()

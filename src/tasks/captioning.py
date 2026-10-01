@@ -1,15 +1,12 @@
 """Captioning task: cross-entropy + perplexity."""
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from tasks.base import Task
-
-if TYPE_CHECKING:
-    from data.bundle import DataBundle
 
 IGNORE_INDEX = -100  # 文件顶部加常量
 
@@ -74,7 +71,3 @@ class CaptioningTask(Task):
             "loss": loss_value,
             "perplexity": float(torch.exp(loss).item()),
         }
-
-    @classmethod
-    def from_data(cls, bundle: "DataBundle") -> "CaptioningTask":
-        return cls()

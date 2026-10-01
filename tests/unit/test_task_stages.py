@@ -28,3 +28,15 @@ def test_stage_freeze_is_not_shared() -> None:
 def test_task_default_stages_is_none() -> None:
     assert ClassificationTask.stages is None
     assert CaptioningTask.stages is None
+
+
+def test_task_default_from_data_returns_instance() -> None:
+    """Default from_data() ignores the bundle and calls cls()."""
+    task = ClassificationTask.from_data(bundle=object())  # type: ignore[arg-type]
+    assert isinstance(task, ClassificationTask)
+
+
+def test_task_from_data_inherited() -> None:
+    """Both concrete tasks inherit the default, not their own."""
+    assert "from_data" not in ClassificationTask.__dict__
+    assert "from_data" not in CaptioningTask.__dict__

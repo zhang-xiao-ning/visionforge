@@ -2,7 +2,10 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any, Self
+
+if TYPE_CHECKING:
+    from data.bundle import DataBundle
 
 import torch
 import torch.nn as nn
@@ -54,6 +57,17 @@ class Task(ABC):
 
     # Multi-stage training plan. None = single stage, use TrainConfig.epochs.
     stages: list[Stage] | None = None
+
+    # ---- construction ----
+
+    @classmethod
+    def from_data(cls, bundle: "DataBundle") -> Self:
+        """Build the task from a DataBundle.
+
+        Default: `cls()`. Override when the task needs information from
+        `bundle.model_init` or `bundle.extras`.
+        """
+        return cls()
 
     @abstractmethod
     def train_step(
