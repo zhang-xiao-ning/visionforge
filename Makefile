@@ -8,6 +8,7 @@
 
 # ---- Defaults ----
 EXP     ?= vit
+CFG     ?=
 EPOCHS  ?= 1
 BS      ?= 64
 LR      ?=
@@ -49,6 +50,7 @@ help:
 	@echo "  make board                TensorBoard on outputs/"
 	@echo "  make export               export checkpoint to ONNX"
 	@echo "      EXP=vit [CKPT=path] [OUT=path] [OPSET=17]"
+	@echo "      CFG=configs/vit-baseline.yaml   (alternative to EXP)"
 	@echo "      ... NUM=128 (limit training samples)"
 	@echo "  make serve                FastAPI inference server"
 	@echo "      ONNX=exports/vit.onnx PORT=8000"
@@ -92,7 +94,7 @@ ci:
 
 # ---- Training ----
 TRAIN_ARGS = \
-	--experiment $(EXP) \
+    $(if $(CFG),--config $(CFG),--experiment $(EXP)) \
 	--epochs $(EPOCHS) \
 	--batch-size $(BS) \
     $(if $(NUM),--num-train $(NUM),) \

@@ -1,0 +1,7 @@
+experiment: vit
+description: baseline, 10 epochs, no freeze
+
+epochs: 10
+batch_size: 128
+learning_rate: 3e-4
+optimizer: sgd

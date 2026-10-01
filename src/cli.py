@@ -1,9 +1,18 @@
-"""Command-line interface: argparse → Experiment + TrainConfig."""
+"""Command-line interface: argparse + optional YAML → run parameters."""
 
 import argparse
 import dataclasses
+from pathlib import Path
+from typing import Any
 
-from experiment.spec import TrainConfig
+from experiment.loader import (
+    coerce_overrides,
+    load_yaml,
+    parse_stages,
+    split_overrides,
+    validate_override_keys,
+)
+from experiment.spec import Stage, TrainConfig
 from registry import EXPERIMENTS
 from runtime import DEFAULT_EXPERIMENT
 
@@ -11,10 +20,17 @@ from runtime import DEFAULT_EXPERIMENT
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train visionforge models.")
     parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to a YAML config file. Mutually exclusive with --experiment.",
+    )
+    parser.add_argument(
         "--experiment",
         type=str,
-        default=DEFAULT_EXPERIMENT,
+        default=None,
         choices=list(EXPERIMENTS.keys()),
+        help="Experiment name (looked up in the registry).",
     )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--amp", action="store_true")
@@ -43,7 +59,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# argparse arg name → TrainConfig field name
+# argparse dest → TrainConfig field name
 _CONFIG_FIELDS = {
     "epochs": "epochs",
     "batch_size": "batch_size",
@@ -61,26 +77,72 @@ _CONFIG_FIELDS = {
 }
 
 
-def build_run(
-    args: argparse.Namespace,
-) -> tuple[str, TrainConfig, int, bool, int | None]:
-    """Merge CLI args into the Experiment's default config.
-
-    Returns (experiment_name, config, seed, amp, num_train).
-    """
-    experiment = EXPERIMENTS[args.experiment]
-
-    overrides: dict[str, object] = {}
+def _cli_overrides(args: argparse.Namespace) -> dict[str, Any]:
+    """Extract non-None CLI args as TrainConfig overrides."""
+    overrides: dict[str, Any] = {}
     for arg_name, field_name in _CONFIG_FIELDS.items():
         value = getattr(args, arg_name)
         if value is not None:
             overrides[field_name] = value
     if args.no_nesterov:
         overrides["nesterov"] = False
+    return overrides
 
-    config = dataclasses.replace(experiment.config, **overrides)
 
+def _resolve_experiment_name(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
+    """Return (experiment_name, yaml_data).
+
+    yaml_data is {} when --config is not given.
+    """
+    if args.config is None:
+        return args.experiment or DEFAULT_EXPERIMENT, {}
+
+    yaml_data = load_yaml(Path(args.config))
+    yaml_experiment = yaml_data["experiment"]
+
+    if args.experiment is not None and args.experiment != yaml_experiment:
+        raise ValueError(
+            f"--experiment ({args.experiment}) conflicts with YAML 'experiment: {yaml_experiment}'"
+        )
+    if yaml_experiment not in EXPERIMENTS:
+        raise ValueError(f"YAML 'experiment: {yaml_experiment}' is not registered")
+
+    return yaml_experiment, yaml_data
+
+
+def build_run(
+    args: argparse.Namespace,
+) -> tuple[str, TrainConfig, int, bool, int | None, list[Stage] | None]:
+    """Merge CLI + YAML + registry defaults into run parameters.
+
+    Priority (low → high):
+        TrainConfig default < Experiment.config < YAML < CLI < stage.overrides
+
+    Returns (experiment_name, config, seed, amp, num_train, stages).
+    """
+    experiment_name, yaml_data = _resolve_experiment_name(args)
+    experiment = EXPERIMENTS[experiment_name]
+
+    # Start from the experiment's default config
+    config = experiment.config
+
+    # YAML overrides
+    if yaml_data:
+        yaml_over = split_overrides(yaml_data)
+        validate_override_keys(yaml_over)
+        yaml_over = coerce_overrides(yaml_over)
+        config = dataclasses.replace(config, **yaml_over)
+
+    # CLI overrides (highest priority at the top level)
+    config = dataclasses.replace(config, **_cli_overrides(args))
+
+    # Stages
+    stages: list[Stage] | None = None
+    if "stages" in yaml_data:
+        stages = parse_stages(yaml_data["stages"])
+
+    # Global flags
     seed = args.seed if args.seed is not None else experiment.seed
     amp = args.amp or experiment.amp
 
-    return args.experiment, config, seed, amp, args.num_train
+    return experiment_name, config, seed, amp, args.num_train, stages

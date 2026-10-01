@@ -1,0 +1,15 @@
+experiment: captioning
+description: example of multi-stage config (demo only)
+
+learning_rate: 1e-3
+epochs: 5
+
+stages:
+  - name: warmup
+    freeze: []
+    epochs: 1
+    learning_rate: 5e-4
+
+  - name: main
+    freeze: []
+    epochs: 4
