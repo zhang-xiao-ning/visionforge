@@ -44,7 +44,6 @@ def test_accuracy_above_baseline(
     cfg = TrainConfig(experiment=experiment, epochs=epochs, learning_rate=default_lr)
     runner = ExperimentRunner(
         cfg=cfg,
-        dataset_name="cifar10",
         batch_size=64,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",

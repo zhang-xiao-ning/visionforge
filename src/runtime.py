@@ -29,3 +29,7 @@ def get_device() -> torch.device:
 
 # Import-time snapshot. Resolved once, at import.
 device = get_device()
+
+# Whether the resolved device is CUDA. Used to decide DataLoader
+# num_workers / pin_memory.
+USE_CUDA = device.type == "cuda"

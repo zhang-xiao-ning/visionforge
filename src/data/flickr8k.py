@@ -24,6 +24,7 @@ from torchvision import transforms
 
 from data.bundle import DataBundle, DataContext
 from data.tokenizers import Tokenizer, build_tokenizer
+from runtime import USE_CUDA
 from utils.path import DATASETS_PATH
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -229,6 +230,7 @@ def build_bundle(ctx: DataContext) -> DataBundle:
         root=DATASETS_PATH,
         tokenizer=tokenizer,
         batch_size=ctx.batch_size,
+        num_workers=4 if USE_CUDA else 0,
         num_train=ctx.num_train,
     )
 

@@ -163,7 +163,6 @@ class CaptioningModel(nn.Module):
         tgt = tgt + self.pos_embed_dec[:, :L]
 
         tgt_mask = self._causal_mask(L, images.device)
-        tgt_mask = self._causal_mask(L, images.device)
 
         # NOTE: tgt_key_padding_mask is intentionally omitted.
         # tiktoken sets pad_id == bos_id == eos_id, so masking positions
