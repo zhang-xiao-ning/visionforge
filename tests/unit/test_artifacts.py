@@ -2,34 +2,23 @@
 
 from pathlib import Path
 
-import pytest
-
 from experiment.artifacts import RunArtifacts
-from experiment.config import TrainConfig
+from experiment.spec import TrainConfig
 from training.strategy import SingleDeviceStrategy
 
 _TEST_DATASET = "cifar10"
 
 
 class _NonMainStrategy(SingleDeviceStrategy):
-    """Pretend to be a non-main DDP process."""
-
     def is_main_process(self) -> bool:
         return False
 
 
-@pytest.fixture
-def cfg(any_experiment: str) -> TrainConfig:
-    return TrainConfig(experiment=any_experiment, epochs=1)
-
-
-def test_create_returns_correct_paths(
-    tmp_path: Path, cfg: TrainConfig, any_experiment: str
-) -> None:
+def test_create_returns_correct_paths(tmp_path: Path, any_experiment: str) -> None:
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
@@ -47,13 +36,11 @@ def test_create_returns_correct_paths(
     artifacts.close()
 
 
-def test_create_writes_config_snapshot(
-    tmp_path: Path, cfg: TrainConfig, any_experiment: str
-) -> None:
+def test_create_writes_config_snapshot(tmp_path: Path, any_experiment: str) -> None:
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(batch_size=64),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
@@ -67,28 +54,28 @@ def test_create_writes_config_snapshot(
     assert '"batch_size": 64' in content
 
 
-def test_non_main_process_skips_logger_and_writer(tmp_path: Path, cfg: TrainConfig) -> None:
+def test_non_main_process_skips_logger_and_writer(tmp_path: Path, any_experiment: str) -> None:
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(),
         strategy=_NonMainStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
     )
 
     assert artifacts.is_main is False
-    assert artifacts.logger is not None  # worker now gets its own text-only logger
+    assert artifacts.logger is not None
     assert not artifacts.cfg_path.exists()
 
 
-def test_resume_reuses_old_csv(tmp_path: Path, cfg: TrainConfig, any_experiment: str) -> None:
+def test_resume_reuses_old_csv(tmp_path: Path, any_experiment: str) -> None:
     resume_path = str(tmp_path / "checkpoints" / f"{any_experiment}_20260921_120000.pt")
 
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         resume_path=resume_path,
         outputs_dir=tmp_path / "outputs",
@@ -99,11 +86,11 @@ def test_resume_reuses_old_csv(tmp_path: Path, cfg: TrainConfig, any_experiment:
     assert artifacts.csv_path.name == f"{any_experiment}_20260921_120000.csv"
 
 
-def test_fresh_run_uses_new_csv(tmp_path: Path, cfg: TrainConfig) -> None:
+def test_fresh_run_uses_new_csv(tmp_path: Path, any_experiment: str) -> None:
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
@@ -113,11 +100,11 @@ def test_fresh_run_uses_new_csv(tmp_path: Path, cfg: TrainConfig) -> None:
     assert artifacts.csv_path.name == f"{artifacts.base}.csv"
 
 
-def test_close_is_idempotent(tmp_path: Path, cfg: TrainConfig) -> None:
+def test_close_is_idempotent(tmp_path: Path, any_experiment: str) -> None:
     artifacts = RunArtifacts.create(
-        cfg=cfg,
+        experiment_name=any_experiment,
         dataset_name=_TEST_DATASET,
-        batch_size=64,
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",

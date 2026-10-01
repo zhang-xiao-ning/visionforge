@@ -1,20 +1,21 @@
 """Entry point for training."""
 
-from cli import build_config, parse_args
+from cli import build_run, parse_args
 from experiment.runner import ExperimentRunner
 from framework import set_seed
 
 
 def main() -> None:
     args = parse_args()
-    cfg = build_config(args)
-    set_seed(cfg.seed)
+    experiment_name, config, seed, amp, num_train = build_run(args)
+    set_seed(seed)
 
     runner = ExperimentRunner(
-        cfg=cfg,
-        batch_size=args.batch_size,
+        experiment_name=experiment_name,
+        config=config,
+        amp=amp,
         resume_path=args.resume,
-        num_train=args.num_train,
+        num_train=num_train,
     )
     try:
         runner.run()

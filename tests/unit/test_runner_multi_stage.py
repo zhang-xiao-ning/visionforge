@@ -8,17 +8,15 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from data.bundle import DataBundle
-from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
+from experiment.spec import Experiment, Stage, TrainConfig
 from models.base import Model
 from registry import EXPERIMENTS
-from tasks.base import Stage, Task
+from tasks.base import Task
 from training.strategy import SingleDeviceStrategy
 
 
 class _TwoGroupModel(Model):
-    """Minimal model exposing two named param groups: 'a' and 'b'."""
-
     def __init__(self) -> None:
         super().__init__()
         self.a = nn.Linear(4, 4)
@@ -35,18 +33,8 @@ class _TwoGroupModel(Model):
 
 
 class _MultiStageTask(Task):
-    """Classification-ish task with a two-stage plan."""
-
     primary_metric = "loss"
     higher_is_better = False
-    stages = [
-        Stage(name="phase1", epochs=1, freeze=["a"]),
-        Stage(name="phase2", epochs=2, freeze=[]),
-    ]
-
-    @classmethod
-    def from_data(cls, bundle: DataBundle) -> "_MultiStageTask":
-        return cls()
 
     def train_step(self, model, batch, device, dtype):
         x, y = batch
@@ -75,25 +63,28 @@ def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
     )
 
 
+_DEFAULT_STAGES = [
+    Stage(name="phase1", freeze=["a"], overrides={"epochs": 1}),
+    Stage(name="phase2", freeze=[], overrides={"epochs": 2}),
+]
+
+
 @pytest.fixture
 def patched_runner(monkeypatch, tmp_path: Path):
-    """Build an ExperimentRunner with fake data/model/task injected."""
-
-    fake_exp = {
-        "data": "fake",
-        "model": _TwoGroupModel,
-        "task": _MultiStageTask,
-        "lr": 1e-3,
-        "category": "classification",
-    }
+    fake_exp = Experiment(
+        model=_TwoGroupModel,
+        task=_MultiStageTask,
+        data="fake",
+        category="classification",
+    )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
     monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
 
-    def make() -> ExperimentRunner:
-        cfg = TrainConfig(experiment="fake_exp", epochs=999)  # 999 ignored
+    def make(stages=None) -> ExperimentRunner:
         return ExperimentRunner(
-            cfg=cfg,
-            batch_size=4,
+            experiment_name="fake_exp",
+            config=TrainConfig(),
+            stages=stages if stages is not None else _DEFAULT_STAGES,
             strategy=SingleDeviceStrategy(),
             outputs_dir=tmp_path / "outputs",
             checkpoints_dir=tmp_path / "checkpoints",
@@ -106,21 +97,18 @@ def test_multi_stage_runs_all_stages(patched_runner) -> None:
     runner = patched_runner()
     result = runner.run()
     runner.cleanup()
-    # Last stage had 2 epochs → last_epoch == 2
     assert result["last_epoch"] == 2
 
 
-def test_multi_stage_ignores_cfg_epochs(patched_runner) -> None:
-    """cfg.epochs=999 must not leak into the multi-stage run."""
+def test_multi_stage_respects_stage_epochs(patched_runner) -> None:
+    """Last stage has 2 epochs → last_epoch == 2, regardless of TrainConfig.epochs."""
     runner = patched_runner()
     result = runner.run()
     runner.cleanup()
-    # last stage's epoch count, not cfg.epochs
     assert result["last_epoch"] == 2
 
 
 def test_multi_stage_resume_raises(patched_runner, tmp_path: Path) -> None:
-    """Resume is not supported for multi-stage training."""
     runner = patched_runner()
     runner.resume_path = str(tmp_path / "fake.pt")
     with pytest.raises(NotImplementedError, match="Resume is not supported"):

@@ -15,8 +15,8 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
-from experiment.config import TrainConfig
-from runtime import DTYPE, device
+from experiment.spec import TrainConfig
+from runtime import DTYPE, USE_CUDA, device
 from tasks.base import Task
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy
@@ -34,6 +34,7 @@ def train(
     scheduler: lr_scheduler.LRScheduler | None = None,
     scheduler_mode: str = "epoch",
     start_epoch: int = 1,
+    amp: bool = False,
 ) -> dict[str, float | int]:
     """Run the training loop.
 
@@ -44,7 +45,7 @@ def train(
         hooks.logger.flow(f"Enter function: train, rank: {strategy.rank}")
 
     # ---- one-time setup ----
-    amp_enabled = cfg.amp and device.type == "cuda"
+    amp_enabled = amp and USE_CUDA
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
     last_epoch = start_epoch - 1
 

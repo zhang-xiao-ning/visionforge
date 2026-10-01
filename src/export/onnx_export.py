@@ -113,7 +113,7 @@ def main() -> None:
         else Path("exports") / f"{args.experiment}.onnx"
     )
 
-    model_cls = EXPERIMENTS[args.experiment]["model"]
+    model_cls = EXPERIMENTS[args.experiment].model
 
     print(f"Experiment: {args.experiment}")
     print(f"Checkpoint: {ckpt_path}")

@@ -8,7 +8,7 @@ from registry import EXPERIMENTS
 
 @pytest.fixture(params=list(EXPERIMENTS.keys()))
 def model_cls(request: pytest.FixtureRequest):
-    return EXPERIMENTS[request.param]["model"]
+    return EXPERIMENTS[request.param].model
 
 
 def test_inherits_model_base(model_cls) -> None:
@@ -39,10 +39,9 @@ def test_initialize_default_is_noop(
     classification_experiment_cls,
     tmp_path,
 ) -> None:
-    """Default initialize() should accept a Path and do nothing."""
     model = classification_experiment_cls()
     before = {k: v.clone() for k, v in model.state_dict().items()}
-    model.initialize(tmp_path / "nonexistent.pt")  # must not raise
+    model.initialize(tmp_path / "nonexistent.pt")
     after = model.state_dict()
     assert set(before.keys()) == set(after.keys())
     for k in before:

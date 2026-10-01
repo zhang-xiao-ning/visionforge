@@ -6,13 +6,12 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from data.bundle import DataBundle
-from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
+from experiment.spec import TrainConfig
 from training.strategy import SingleDeviceStrategy
 
 
 def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
-    """Tiny bundle for fast tests (no disk IO)."""
     x = torch.randn(8, 3, 32, 32)
     y = torch.randint(0, 10, (8,))
     ds = TensorDataset(x, y)
@@ -29,10 +28,9 @@ def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
 def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
 
-    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
-        cfg=cfg,
-        batch_size=4,
+        experiment_name="vit",
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
@@ -49,10 +47,9 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
 def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
 
-    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
-        cfg=cfg,
-        batch_size=4,
+        experiment_name="vit",
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",
@@ -72,10 +69,9 @@ def test_runner_passes_num_train_to_build_data(monkeypatch, tmp_path: Path) -> N
 
     monkeypatch.setattr("experiment.runner.build_data", fake_build_data)
 
-    cfg = TrainConfig(experiment="vit", epochs=1)
     runner = ExperimentRunner(
-        cfg=cfg,
-        batch_size=4,
+        experiment_name="vit",
+        config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",

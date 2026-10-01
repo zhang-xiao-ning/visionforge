@@ -1,18 +1,9 @@
-"""Regression tests: verify model accuracy does not collapse after refactors.
+"""Regression tests: verify model accuracy does not collapse after refactors."""
 
-These tests are skipped by default. To run them locally:
-
-    RUN_REGRESSION=1 uv run pytest tests/test_regression.py -v
-
-They train on a small subset of CIFAR-10 (1000 images, 1 epoch) and assert
-that validation accuracy stays above a loose baseline. The thresholds are
-deliberately generous: they catch "training is broken" bugs, not minor
-numerical drift from environment differences (MPS vs CUDA vs CPU).
-"""
+import dataclasses
 
 import pytest
 
-from experiment.config import TrainConfig
 from experiment.runner import ExperimentRunner
 from registry import EXPERIMENTS
 from training.strategy import SingleDeviceStrategy
@@ -20,7 +11,6 @@ from training.strategy import SingleDeviceStrategy
 pytestmark = pytest.mark.regression
 
 
-# (experiment, epochs, num_train, min_val_acc)
 BASELINES = [
     ("mlp", 1, 1000, 0.15),
 ]
@@ -40,11 +30,11 @@ def test_accuracy_above_baseline(
     min_val_acc: float,
     tmp_path,
 ) -> None:
-    default_lr = EXPERIMENTS[experiment]["lr"]
-    cfg = TrainConfig(experiment=experiment, epochs=epochs, learning_rate=default_lr)
+    exp = EXPERIMENTS[experiment]
+    cfg = dataclasses.replace(exp.config, epochs=epochs)
     runner = ExperimentRunner(
-        cfg=cfg,
-        batch_size=64,
+        experiment_name=experiment,
+        config=cfg,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
         checkpoints_dir=tmp_path / "checkpoints",

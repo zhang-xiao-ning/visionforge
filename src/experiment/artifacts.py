@@ -1,13 +1,10 @@
-"""Run artifacts: paths, logger, CSV recorder, TensorBoard writer.
+"""Run artifacts: paths, logger, TensorBoard writer.
 
 This module centralizes everything related to "what a single run produces":
 
 - file paths (log, csv, checkpoint, config snapshot, tensorboard dir)
-- the objects that write to them (logger, recorder, writer)
+- the objects that write to them (logger, writer)
 - the "main process only" rule under DDP
-
-Adding a new artifact (e.g. WandB) means extending this class, without
-touching training code.
 """
 
 from __future__ import annotations
@@ -18,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from experiment.config import TrainConfig
+from experiment.spec import TrainConfig
 from training.strategy import TrainingStrategy
 from utils.env import get_env_info
 from utils.logger import AppLogger, get_logger
@@ -41,9 +38,9 @@ class RunArtifacts:
     @classmethod
     def create(
         cls,
-        cfg: TrainConfig,
+        experiment_name: str,
         dataset_name: str,
-        batch_size: int,
+        config: TrainConfig,
         strategy: TrainingStrategy,
         resume_path: str | None = None,
         outputs_dir: Path | None = None,
@@ -55,7 +52,7 @@ class RunArtifacts:
             checkpoints_dir = CHECKPOINTS_PATH
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base = f"{cfg.experiment}_{timestamp}"
+        base = f"{experiment_name}_{timestamp}"
 
         log_path = outputs_dir / f"{base}.log"
         ckpt_path = checkpoints_dir / f"{base}.pt"
@@ -77,13 +74,12 @@ class RunArtifacts:
             outputs_dir.mkdir(parents=True, exist_ok=True)
             checkpoints_dir.mkdir(parents=True, exist_ok=True)
             logger = get_logger(
-                cfg.experiment, log_path, csv_path=csv_path, tb_dir=tb_dir, csv_append=csv_append
+                experiment_name, log_path, csv_path=csv_path, tb_dir=tb_dir, csv_append=csv_append
             )
         else:
-            # Worker: text-only, rank-specific file. No CSV, no TB.
             outputs_dir.mkdir(parents=True, exist_ok=True)
             worker_log = outputs_dir / f"{base}.rank{strategy.rank}.log"
-            logger = get_logger(f"{cfg.experiment}.rank{strategy.rank}", worker_log)
+            logger = get_logger(f"{experiment_name}.rank{strategy.rank}", worker_log)
 
         artifacts = cls(
             base=base,
@@ -98,9 +94,9 @@ class RunArtifacts:
 
         if is_main:
             artifacts.save_snapshot(
-                cfg=cfg,
+                experiment_name=experiment_name,
                 dataset_name=dataset_name,
-                batch_size=batch_size,
+                config=config,
                 resume_path=resume_path,
             )
 
@@ -108,15 +104,15 @@ class RunArtifacts:
 
     def save_snapshot(
         self,
-        cfg: TrainConfig,
+        experiment_name: str,
         dataset_name: str,
-        batch_size: int,
+        config: TrainConfig,
         resume_path: str | None,
     ) -> None:
         snapshot = {
-            "config": dataclasses.asdict(cfg),
+            "experiment": experiment_name,
             "dataset": dataset_name,
-            "batch_size": batch_size,
+            "config": dataclasses.asdict(config),
             "env": get_env_info(),
             "resume_from": resume_path,
         }

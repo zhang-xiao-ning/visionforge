@@ -1,19 +1,4 @@
-"""ExperimentRunner: orchestrates a single training run.
-
-This class owns everything between "I have a TrainConfig" and
-"I have a trained model + a checkpoint on disk":
-
-- paths and loggers/writers (via RunArtifacts)
-- data loaders
-- model / optimizer / scheduler construction
-- optional resume from checkpoint
-- the training loop
-- test evaluation
-- checkpoint saving
-
-Under DDP, only the main process writes logs/checkpoints. The actual
-"what differs between topologies" is delegated to a TrainingStrategy.
-"""
+"""ExperimentRunner: orchestrates a single training run."""
 
 import dataclasses
 import math
@@ -26,7 +11,7 @@ from torch.optim import lr_scheduler
 from data.bundle import DataContext
 from data.datasets import build_data
 from experiment.artifacts import RunArtifacts
-from experiment.config import TrainConfig
+from experiment.spec import Stage, TrainConfig
 from registry import EXPERIMENTS
 from runtime import PRINT_EVERY, device
 from training.evaluator import evaluate
@@ -38,7 +23,6 @@ from utils.env import format_env_info
 
 
 def _unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
-    """Return the underlying model for DDP-wrapped modules."""
     return model.module if hasattr(model, "module") else model
 
 
@@ -47,18 +31,8 @@ def _build_scheduler(
     cfg: TrainConfig,
     steps_per_epoch: int,
 ) -> tuple[lr_scheduler.LRScheduler | None, str]:
-    """Build a scheduler. Returns (scheduler, mode).
-
-    mode = "step": scheduler.step() is called every batch
-    mode = "epoch": scheduler.step() is called every epoch
-
-    When `warmup_steps > 0`, we use a step-level LambdaLR that combines
-    warmup + (optional) cosine decay. Otherwise, the classic epoch-level
-    schedulers are used.
-    """
     total_steps = cfg.epochs * steps_per_epoch
 
-    # Step-level path: warmup (+ optional cosine)
     if cfg.warmup_steps > 0:
 
         def lr_lambda(step: int) -> float:
@@ -71,7 +45,6 @@ def _build_scheduler(
 
         return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda), "step"
 
-    # Epoch-level path (existing behavior)
     if cfg.lr_scheduler == "step":
         return (
             optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma),
@@ -90,45 +63,47 @@ class ExperimentRunner:
 
     def __init__(
         self,
-        cfg: TrainConfig,
-        batch_size: int,
+        experiment_name: str,
+        config: TrainConfig,
+        stages: list[Stage] | None = None,
+        amp: bool = False,
         strategy: TrainingStrategy | None = None,
         resume_path: str | None = None,
         outputs_dir: Path | None = None,
         checkpoints_dir: Path | None = None,
         num_train: int | None = None,
     ) -> None:
-        self.cfg = cfg
-        self.batch_size = batch_size
+        self.experiment_name = experiment_name
+        self.cfg = config
+        self.stages = stages
+        self.amp = amp
         self.resume_path = resume_path
         self.num_train = num_train
         self.strategy = strategy if strategy is not None else build_strategy(device)
 
-        exp = EXPERIMENTS[cfg.experiment]
-        self.dataset_name = exp["data"]
+        experiment = EXPERIMENTS[experiment_name]
+        self.dataset_name = experiment.data
 
         self.artifacts = RunArtifacts.create(
-            cfg=cfg,
+            experiment_name=experiment_name,
             dataset_name=self.dataset_name,
-            batch_size=batch_size,
+            config=config,
             strategy=self.strategy,
             resume_path=resume_path,
             outputs_dir=outputs_dir,
             checkpoints_dir=checkpoints_dir,
         )
 
-        # Data first: build the bundle
         ctx = DataContext(
-            batch_size=batch_size,
+            batch_size=config.batch_size,
             num_train=num_train,
             strategy=self.strategy,
         )
         self.bundle = build_data(self.dataset_name, ctx)
 
-        # Model and task adapt themselves to the data
-        raw_model = exp["model"].from_data(self.bundle)
+        raw_model = experiment.model.from_data(self.bundle)
         self.model = self.strategy.wrap_model(raw_model, device)
-        self.task = exp["task"].from_data(self.bundle)
+        self.task = experiment.task.from_data(self.bundle)
 
         self.loader_train = self.bundle.loader_train
         self.loader_val = self.bundle.loader_val
@@ -136,12 +111,19 @@ class ExperimentRunner:
 
         self.optimizer = self._build_optimizer()
         self.scheduler, self.scheduler_mode = _build_scheduler(
-            self.optimizer, cfg, steps_per_epoch=len(self.loader_train)
+            self.optimizer, config, steps_per_epoch=len(self.loader_train)
         )
         self.start_epoch, self.best_acc = self._maybe_resume()
         self._tracker = self._build_tracker()
 
     # ---------- construction ----------
+
+    def _build_tracker(self) -> MetricTracker:
+        return MetricTracker(
+            higher_is_better=self.task.higher_is_better,
+            patience=self.cfg.early_stop_patience,
+            initial_best=self.best_acc if self.resume_path else None,
+        )
 
     def _build_hooks(self) -> TrainHooks:
         """Build hooks. This is the ONLY place that branches on rank."""
@@ -181,9 +163,6 @@ class ExperimentRunner:
         )
 
     def _build_optimizer(self) -> optim.Optimizer:
-        # Filter to trainable params so multi-stage freezing actually works.
-        # In the single-stage case every param is trainable, so this is
-        # equivalent to `self.model.parameters()`.
         params = [p for p in self.model.parameters() if p.requires_grad]
         if self.cfg.optimizer == "adamw":
             return optim.AdamW(
@@ -223,7 +202,7 @@ class ExperimentRunner:
 
     def run(self) -> dict[str, float]:
         self._log_header()
-        if self.task.stages is None:
+        if self.stages is None:
             result = self._run_single_stage()
         else:
             result = self._run_multi_stage()
@@ -248,43 +227,40 @@ class ExperimentRunner:
             scheduler=self.scheduler,
             scheduler_mode=self.scheduler_mode,
             start_epoch=self.start_epoch,
+            amp=self.amp,
         )
 
     def _run_multi_stage(self) -> dict[str, float | int]:
         """Multi-stage path.
 
         For each Stage:
-          1. freeze / unfreeze params via Model.param_groups()
-          2. rebuild optimizer (only trainable params)
-          3. rebuild scheduler (per-stage epoch count)
-          4. rebuild tracker (best metric is per-stage)
-          5. rebuild hooks (captures the new tracker)
-          6. run train() with stage.epochs
-
-        Not supported in multi-stage mode: resume. A stage is a fresh
-        start by design; resuming a specific stage has no well-defined
-        semantics yet.
+          1. freeze / unfreeze via Model.param_groups()
+          2. rebuild optimizer (trainable params only)
+          3. rebuild scheduler using merged stage config
+          4. rebuild tracker
+          5. rebuild hooks
+          6. run train() with the merged stage config
         """
-        assert self.task.stages is not None
+        assert self.stages is not None
         if self.resume_path is not None:
             raise NotImplementedError(
                 "Resume is not supported for multi-stage training. "
                 "Run from scratch, or resume a single-stage experiment."
             )
 
-        stages = self.task.stages
+        stages = self.stages
         result: dict[str, float | int] = {}
         for i, stage in enumerate(stages, start=1):
             if self.artifacts.logger is not None:
                 self.artifacts.logger.flow(
                     f"Stage {i}/{len(stages)}: {stage.name} "
-                    f"(epochs={stage.epochs}, freeze={stage.freeze})"
+                    f"(freeze={stage.freeze}, overrides={stage.overrides})"
                 )
 
             self._apply_freeze(stage.freeze)
             self.optimizer = self._build_optimizer()
 
-            stage_cfg = dataclasses.replace(self.cfg, epochs=stage.epochs)
+            stage_cfg = dataclasses.replace(self.cfg, **stage.overrides)
             self.scheduler, self.scheduler_mode = _build_scheduler(
                 self.optimizer, stage_cfg, steps_per_epoch=len(self.loader_train)
             )
@@ -304,19 +280,13 @@ class ExperimentRunner:
                 scheduler=self.scheduler,
                 scheduler_mode=self.scheduler_mode,
                 start_epoch=1,
+                amp=self.amp,
             )
 
         return result
 
-    def _build_tracker(self) -> MetricTracker:
-        return MetricTracker(
-            higher_is_better=self.task.higher_is_better,
-            patience=self.cfg.early_stop_patience,
-            initial_best=self.best_acc if self.resume_path else None,
-        )
-
     def _apply_freeze(self, freeze: list[str]) -> None:
-        """Set requires_grad=False on named groups, True on all others.
+        """Set requires_grad=False on named groups, True on others.
 
         Group names must match keys from `Model.param_groups()`.
         """
@@ -345,7 +315,7 @@ class ExperimentRunner:
             return
         logger = self.artifacts.logger
         logger.info("=" * 60)
-        logger.info(f"Experiment: {self.cfg.experiment}")
+        logger.info(f"Experiment: {self.experiment_name}")
         logger.info(f"Dataset: {self.dataset_name}")
         logger.info(f"Device: {device}")
         logger.info(f"Config: {self.cfg}")
@@ -373,7 +343,6 @@ class ExperimentRunner:
                 "epoch": result["last_epoch"],
                 "best_acc": result["best_acc"],
                 "config": dataclasses.asdict(self.cfg),
-                # Self-contained reconstruction info
                 "model_init": self.bundle.model_init,
                 "extras": self.bundle.extras,
             },

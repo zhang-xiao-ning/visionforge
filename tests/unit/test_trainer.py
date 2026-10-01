@@ -3,7 +3,7 @@
 import torch
 import torch.optim as optim
 
-from experiment.config import TrainConfig
+from experiment.spec import TrainConfig
 from tasks.classification import ClassificationTask
 from training.hooks import TrainHooks
 from training.strategy import SingleDeviceStrategy
