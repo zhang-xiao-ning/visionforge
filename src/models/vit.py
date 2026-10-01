@@ -1,13 +1,10 @@
-from typing import TYPE_CHECKING
-
 import torch
 import torch.nn as nn
 
-if TYPE_CHECKING:
-    from data.bundle import DataBundle
+from models.base import Model
 
 
-class PatchEmbedding(nn.Module):
+class PatchEmbedding(Model):
     """把 (B, 3, 32, 32) 切成 patch 并线性投影到 embed_dim。"""
 
     def __init__(
@@ -30,7 +27,7 @@ class PatchEmbedding(nn.Module):
         return x
 
 
-class ViT(nn.Module):
+class ViT(Model):
     def __init__(
         self,
         img_size: int = 32,
@@ -96,8 +93,3 @@ class ViT(nn.Module):
         x = self.norm(x)
         cls_out = x[:, 0]  # 取 [CLS]
         return self.head(cls_out)  # (B, num_classes)
-
-    @classmethod
-    def from_data(cls, bundle: "DataBundle") -> "ViT":
-        """Build ViT using construction info from the dataset."""
-        return cls(**bundle.model_init)

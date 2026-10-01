@@ -10,16 +10,13 @@ This is the simplest thing that works for captioning. Training is teacher-forced
     target_ids = [c1, c2, ..., c_N, EOS]
 """
 
-from typing import TYPE_CHECKING
-
 import torch
 import torch.nn as nn
 
-if TYPE_CHECKING:
-    from data.bundle import DataBundle
+from models.base import Model
 
 
-class ImageEncoder(nn.Module):
+class ImageEncoder(Model):
     """Patchify + TransformerEncoder. Output: (B, num_patches, d_model)."""
 
     def __init__(
@@ -75,7 +72,7 @@ class ImageEncoder(nn.Module):
         return self.norm(x)
 
 
-class CaptioningModel(nn.Module):
+class CaptioningModel(Model):
     """Full captioning model: image encoder + text decoder."""
 
     # Tokenizer backend name. Change to "sp" after training SentencePiece.
@@ -207,8 +204,3 @@ class CaptioningModel(nn.Module):
                 break
 
         return generated
-
-    @classmethod
-    def from_data(cls, bundle: "DataBundle") -> "CaptioningModel":
-        """Build CaptioningModel using construction info from the dataset."""
-        return cls(**bundle.model_init)
