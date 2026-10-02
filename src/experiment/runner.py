@@ -115,9 +115,27 @@ class ExperimentRunner:
             self.optimizer, config, steps_per_epoch=len(self.loader_train)
         )
         self.start_epoch, self.best_acc = self._maybe_resume()
+        self._validate_metrics()
         self._tracker = self._build_tracker()
 
     # ---------- construction ----------
+    def _validate_metrics(self) -> None:
+        """Ensure primary_metric runs every epoch during training.
+
+        Otherwise early stop / best-model selection has no data on
+        some epochs.
+        """
+        primary = next((m for m in self.metrics if m.name == self.primary_metric), None)
+        if primary is None:
+            raise ValueError(
+                f"primary_metric '{self.primary_metric}' not in metrics: "
+                f"{[m.name for m in self.metrics]}"
+            )
+        if primary.run_every_n_epochs != 1:
+            raise ValueError(
+                f"primary_metric '{primary.name}' must run every epoch "
+                f"(got run_every_n_epochs={primary.run_every_n_epochs})"
+            )
 
     def _primary_higher_is_better(self) -> bool:
         for m in self.metrics:
@@ -151,7 +169,12 @@ class ExperimentRunner:
                 logger.debug(f"Epoch {ctx.epoch}, Iter {ctx.step}, loss = {ctx.loss:.4f}")
 
         def on_epoch_end(ctx: EpochContext) -> bool:
-            val_metrics = evaluate(ctx.model, ctx.loader_val, metrics)
+            active = [
+                m
+                for m in metrics
+                if m.run_every_n_epochs is not None and ctx.epoch % m.run_every_n_epochs == 0
+            ]
+            val_metrics = evaluate(ctx.model, ctx.loader_val, active)
             ctx.val_metrics = val_metrics
             primary = val_metrics[primary_metric]
             metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in val_metrics.items())

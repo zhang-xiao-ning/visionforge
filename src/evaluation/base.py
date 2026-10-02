@@ -24,6 +24,10 @@ class Metric(Protocol):
     #: Whether larger values are better (True for accuracy, False for loss).
     higher_is_better: bool
 
+    #: During training, run every N epochs.
+    #: None = skip during training (only run at final test evaluation).
+    run_every_n_epochs: int | None
+
     def evaluate(
         self,
         model: nn.Module,

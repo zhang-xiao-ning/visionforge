@@ -11,6 +11,7 @@ IGNORE_INDEX = -100
 class Accuracy:
     name = "acc"
     higher_is_better = True
+    run_every_n_epochs = 1
 
     def evaluate(
         self, model: nn.Module, loader: DataLoader, device: torch.device, dtype: torch.dtype
@@ -33,6 +34,7 @@ class Accuracy:
 class CrossEntropy:
     name = "loss"
     higher_is_better = False
+    run_every_n_epochs = 1
 
     def evaluate(
         self, model: nn.Module, loader: DataLoader, device: torch.device, dtype: torch.dtype
@@ -54,6 +56,7 @@ class CrossEntropy:
 class Perplexity:
     name = "perplexity"
     higher_is_better = False
+    run_every_n_epochs = 1
 
     def evaluate(
         self, model: nn.Module, loader: DataLoader, device: torch.device, dtype: torch.dtype

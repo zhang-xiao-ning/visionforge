@@ -1,0 +1,133 @@
+"""Tests for metric filtering (run_every_n_epochs) in the runner."""
+
+from pathlib import Path
+
+import pytest
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+from data.bundle import DataBundle
+from evaluation.base import Metric
+from experiment.runner import ExperimentRunner
+from experiment.spec import Experiment, TrainConfig
+from models.base import Model
+from registry import EXPERIMENTS
+from tasks.base import Task
+from training.strategy import SingleDeviceStrategy
+
+
+class _TinyModel(Model):
+    def __init__(self) -> None:
+        super().__init__()
+        self.fc = nn.Linear(4, 2)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.fc(x)
+
+
+class _TinyTask(Task):
+    def train_step(self, model, batch, device, dtype):
+        x, y = batch
+        x = x.to(device=device, dtype=dtype)
+        y = y.to(device=device, dtype=torch.long)
+        return nn.functional.cross_entropy(model(x), y)
+
+
+class _CountingMetric:
+    """Counts how many times evaluate() is called."""
+
+    higher_is_better = True
+    run_every_n_epochs: int | None = 1
+
+    def __init__(self, name: str, value: float = 0.5) -> None:
+        self.name = name
+        self.value = value
+        self.calls = 0
+
+    def evaluate(self, model, loader, device, dtype) -> float:
+        self.calls += 1
+        return self.value
+
+
+def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
+    x = torch.randn(8, 4)
+    y = torch.randint(0, 2, (8,))
+    loader = DataLoader(TensorDataset(x, y), batch_size=4)
+    return DataBundle(
+        loader_train=loader,
+        loader_val=loader,
+        loader_test=loader,
+        model_init={},
+        extras={},
+    )
+
+
+@pytest.fixture
+def setup(monkeypatch, tmp_path: Path):
+    def make(metrics: list[Metric]) -> ExperimentRunner:
+        fake_exp = Experiment(
+            model=_TinyModel,
+            task=_TinyTask,
+            data="fake",
+            metrics=metrics,
+            primary_metric=metrics[0].name,
+            category="classification",
+        )
+        monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
+        monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
+        return ExperimentRunner(
+            experiment_name="fake_exp",
+            config=TrainConfig(epochs=3),
+            strategy=SingleDeviceStrategy(),
+            outputs_dir=tmp_path / "outputs",
+            checkpoints_dir=tmp_path / "checkpoints",
+        )
+
+    return make
+
+
+def test_none_metric_runs_only_at_test(setup) -> None:
+    primary = _CountingMetric("primary")
+    slow = _CountingMetric("slow")
+    slow.run_every_n_epochs = None
+
+    runner = setup([primary, slow])
+    runner.run()
+    runner.cleanup()
+
+    # primary: 3 train epochs + 1 test = 4
+    assert primary.calls == 4
+    # slow: 0 train + 1 test = 1
+    assert slow.calls == 1
+
+
+def test_every_2_epochs(setup) -> None:
+    primary = _CountingMetric("primary")
+    every2 = _CountingMetric("every2")
+    every2.run_every_n_epochs = 2
+
+    runner = setup([primary, every2])
+    runner.run()
+    runner.cleanup()
+
+    # 3 epochs: primary runs every epoch (3) + test (1) = 4
+    assert primary.calls == 4
+    # every2 runs on epoch 2 (epochs 1,2,3 → 2 % 2 == 0) + test (1) = 2
+    assert every2.calls == 2
+
+
+def test_primary_metric_must_run_every_epoch(setup) -> None:
+    primary = _CountingMetric("primary")
+    primary.run_every_n_epochs = 2
+
+    with pytest.raises(ValueError, match="must run every epoch"):
+        setup([primary])
+
+
+def test_primary_metric_cannot_be_test_only(setup) -> None:
+    primary = _CountingMetric("primary")
+    primary.run_every_n_epochs = None
+
+    with pytest.raises(ValueError, match="must run every epoch"):
+        setup([primary])

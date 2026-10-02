@@ -63,3 +63,8 @@ def test_metric_is_stateless(dummy_loader) -> None:
     a = m.evaluate(model, dummy_loader, torch.device("cpu"), torch.float32)
     b = m.evaluate(model, dummy_loader, torch.device("cpu"), torch.float32)
     assert a == b
+
+
+def test_metrics_run_every_epoch_by_default() -> None:
+    for cls in (Accuracy, CrossEntropy, Perplexity):
+        assert cls.run_every_n_epochs == 1
