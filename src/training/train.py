@@ -94,7 +94,6 @@ def train(
             lr=lr_now,
             model=model,
             loader_val=loader_val,
-            task=task,
         )
         should_continue = hooks.on_epoch_end(ctx)
 

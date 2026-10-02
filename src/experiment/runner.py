@@ -10,6 +10,7 @@ from torch.optim import lr_scheduler
 
 from data.bundle import DataContext
 from data.datasets import build_data
+from evaluation.base import Metric
 from experiment.artifacts import RunArtifacts
 from experiment.spec import Stage, TrainConfig
 from registry import EXPERIMENTS
@@ -59,8 +60,6 @@ def _build_scheduler(
 
 
 class ExperimentRunner:
-    """Orchestrates everything that happens during one training run."""
-
     def __init__(
         self,
         experiment_name: str,
@@ -83,6 +82,8 @@ class ExperimentRunner:
 
         experiment = EXPERIMENTS[experiment_name]
         self.dataset_name = experiment.data
+        self.metrics: list[Metric] = experiment.metrics
+        self.primary_metric = experiment.primary_metric
 
         self.artifacts = RunArtifacts.create(
             experiment_name=experiment_name,
@@ -118,9 +119,18 @@ class ExperimentRunner:
 
     # ---------- construction ----------
 
+    def _primary_higher_is_better(self) -> bool:
+        for m in self.metrics:
+            if m.name == self.primary_metric:
+                return m.higher_is_better
+        raise ValueError(
+            f"primary_metric '{self.primary_metric}' not in metrics: "
+            f"{[m.name for m in self.metrics]}"
+        )
+
     def _build_tracker(self) -> MetricTracker:
         return MetricTracker(
-            higher_is_better=self.task.higher_is_better,
+            higher_is_better=self._primary_higher_is_better(),
             patience=self.cfg.early_stop_patience,
             initial_best=self.best_acc if self.resume_path else None,
         )
@@ -133,23 +143,26 @@ class ExperimentRunner:
         logger = self.artifacts.logger
         assert logger is not None
         tracker = self._tracker
+        metrics = self.metrics
+        primary_metric = self.primary_metric
 
         def on_step(ctx: StepContext) -> None:
             if ctx.step % PRINT_EVERY == 0:
                 logger.debug(f"Epoch {ctx.epoch}, Iter {ctx.step}, loss = {ctx.loss:.4f}")
 
         def on_epoch_end(ctx: EpochContext) -> bool:
-            ctx.val_metrics = evaluate(ctx.model, ctx.loader_val, ctx.task)
-            primary = ctx.val_metrics[ctx.task.primary_metric]
-            metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in ctx.val_metrics.items())
+            val_metrics = evaluate(ctx.model, ctx.loader_val, metrics)
+            ctx.val_metrics = val_metrics
+            primary = val_metrics[primary_metric]
+            metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in val_metrics.items())
             logger.flow(
                 f"Epoch {ctx.epoch} done. avg_train_loss = {ctx.avg_loss:.4f}, {metrics_str}"
             )
-            logger.record(ctx.epoch, ctx.avg_loss, ctx.val_metrics, ctx.task.primary_metric, ctx.lr)
+            logger.record(ctx.epoch, ctx.avg_loss, val_metrics, primary_metric, ctx.lr)
             return tracker.update(primary, ctx.model)
 
         def on_train_end() -> None:
-            logger.info(f"Best {self.task.primary_metric} = {tracker.best:.4f}")
+            logger.info(f"Best {primary_metric} = {tracker.best:.4f}")
 
         def result() -> dict[str, float]:
             return {"best_acc": tracker.best}
@@ -213,7 +226,6 @@ class ExperimentRunner:
         return {"test_acc": test_acc, **result}
 
     def _run_single_stage(self) -> dict[str, float | int]:
-        """Single-stage path. Behavior identical to the pre-stages runner."""
         hooks = self._build_hooks()
         return train(
             self.model,
@@ -231,16 +243,6 @@ class ExperimentRunner:
         )
 
     def _run_multi_stage(self) -> dict[str, float | int]:
-        """Multi-stage path.
-
-        For each Stage:
-          1. freeze / unfreeze via Model.param_groups()
-          2. rebuild optimizer (trainable params only)
-          3. rebuild scheduler using merged stage config
-          4. rebuild tracker
-          5. rebuild hooks
-          6. run train() with the merged stage config
-        """
         assert self.stages is not None
         if self.resume_path is not None:
             raise NotImplementedError(
@@ -286,10 +288,6 @@ class ExperimentRunner:
         return result
 
     def _apply_freeze(self, freeze: list[str]) -> None:
-        """Set requires_grad=False on named groups, True on others.
-
-        Group names must match keys from `Model.param_groups()`.
-        """
         model = _unwrap_model(self.model)
         groups = model.param_groups()
 
@@ -325,8 +323,8 @@ class ExperimentRunner:
     def _evaluate_test(self) -> float:
         if not self.artifacts.is_main:
             return 0.0
-        test_metrics = evaluate(self.model, self.loader_test, self.task)
-        test_metric = test_metrics[self.task.primary_metric]
+        test_metrics = evaluate(self.model, self.loader_test, self.metrics)
+        test_metric = test_metrics[self.primary_metric]
         if self.artifacts.logger is not None:
             metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())
             self.artifacts.logger.info(f"Test {metrics_str}")

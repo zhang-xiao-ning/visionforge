@@ -17,3 +17,15 @@ def test_task_from_data_inherited() -> None:
 
 def test_task_has_no_stages_attribute() -> None:
     assert not hasattr(Task, "stages")
+
+
+def test_task_has_no_eval_step() -> None:
+    assert not hasattr(Task, "eval_step")
+
+
+def test_task_has_no_primary_metric() -> None:
+    assert not hasattr(Task, "primary_metric")
+
+
+def test_task_has_no_higher_is_better() -> None:
+    assert not hasattr(Task, "higher_is_better")

@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from data.bundle import DataBundle
+from evaluation import CrossEntropy
 from experiment.runner import ExperimentRunner
 from experiment.spec import Experiment, Stage, TrainConfig
 from models.base import Model
@@ -42,13 +43,6 @@ class _MultiStageTask(Task):
         y = y.to(device=device, dtype=torch.long)
         return nn.functional.cross_entropy(model(x), y)
 
-    def eval_step(self, model, batch, device, dtype):
-        x, y = batch
-        x = x.to(device=device, dtype=dtype)
-        y = y.to(device=device, dtype=torch.long)
-        loss = nn.functional.cross_entropy(model(x), y)
-        return {"loss": loss.item()}
-
 
 def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
     x = torch.randn(8, 4)
@@ -75,6 +69,8 @@ def patched_runner(monkeypatch, tmp_path: Path):
         model=_TwoGroupModel,
         task=_MultiStageTask,
         data="fake",
+        metrics=[CrossEntropy()],
+        primary_metric="loss",
         category="classification",
     )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)

@@ -1,10 +1,6 @@
-"""Registry of available experiments.
+"""Registry of available experiments."""
 
-Each entry is an `Experiment` object: which model class, which task
-class, which dataset key, plus defaults. Stages are NOT here — they
-are provided at run time (CLI or YAML).
-"""
-
+from evaluation import Accuracy, CrossEntropy, Perplexity
 from experiment.spec import Experiment, TrainConfig
 from models.captioning import CaptioningModel
 from models.vit import ViT
@@ -16,6 +12,8 @@ EXPERIMENTS: dict[str, Experiment] = {
         model=ViT,
         task=ClassificationTask,
         data="cifar10",
+        metrics=[Accuracy(), CrossEntropy()],
+        primary_metric="acc",
         config=TrainConfig(learning_rate=3e-4),
         category="classification",
     ),
@@ -23,6 +21,8 @@ EXPERIMENTS: dict[str, Experiment] = {
         model=CaptioningModel,
         task=CaptioningTask,
         data="flickr8k",
+        metrics=[Perplexity()],
+        primary_metric="perplexity",
         config=TrainConfig(learning_rate=1e-3),
         category="captioning",
     ),

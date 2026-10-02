@@ -9,8 +9,6 @@ from tasks.captioning import CaptioningTask
 
 
 class _DummyCaptioningModel(nn.Module):
-    """Returns logits of the right shape without any real computation."""
-
     def __init__(self, vocab_size: int = 20) -> None:
         super().__init__()
         self.vocab_size = vocab_size
@@ -21,15 +19,11 @@ class _DummyCaptioningModel(nn.Module):
         return torch.zeros(B, L, self.vocab_size, device=images.device) + self.dummy
 
 
-def _make_batch(
-    B: int = 2,
-    L: int = 5,
-    image_size: int = 32,
-) -> dict[str, Any]:
+def _make_batch(B: int = 2, L: int = 5, image_size: int = 32) -> dict[str, Any]:
     images = torch.randn(B, 3, image_size, image_size)
     input_ids = torch.randint(1, 10, (B, L))
     target_ids = torch.randint(1, 10, (B, L))
-    target_ids[:, -1] = -100  # padding target
+    target_ids[:, -1] = -100
     return {"image": images, "input_ids": input_ids, "target_ids": target_ids}
 
 
@@ -42,27 +36,7 @@ def test_train_step_returns_scalar_loss() -> None:
     assert loss.item() > 0
 
 
-def test_eval_step_returns_loss_and_perplexity() -> None:
-    task = CaptioningTask()
-    model = _DummyCaptioningModel(vocab_size=20)
-    batch = _make_batch()
-    metrics = task.eval_step(model, batch, torch.device("cpu"), torch.float32)
-    assert "loss" in metrics
-    assert "perplexity" in metrics
-    assert metrics["loss"] > 0
-    assert metrics["perplexity"] > 0
-
-
-def test_perplexity_is_exp_of_loss() -> None:
-    task = CaptioningTask()
-    model = _DummyCaptioningModel(vocab_size=20)
-    batch = _make_batch()
-    metrics = task.eval_step(model, batch, torch.device("cpu"), torch.float32)
-    assert abs(metrics["perplexity"] - torch.exp(torch.tensor(metrics["loss"])).item()) < 1e-6
-
-
 def test_padding_positions_are_ignored() -> None:
-    """Changing the padded target should not change the loss."""
     task = CaptioningTask()
     model = _DummyCaptioningModel(vocab_size=20)
 
@@ -74,8 +48,3 @@ def test_padding_positions_are_ignored() -> None:
     loss_b = task.train_step(model, batch_b, torch.device("cpu"), torch.float32)
 
     assert torch.allclose(loss_a, loss_b)
-
-
-def test_primary_metric_and_direction() -> None:
-    assert CaptioningTask.primary_metric == "perplexity"
-    assert CaptioningTask.higher_is_better is False

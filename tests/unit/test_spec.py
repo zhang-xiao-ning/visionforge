@@ -4,8 +4,15 @@ import dataclasses
 
 import torch.nn as nn
 
+from evaluation import CrossEntropy
 from experiment.spec import Experiment, Stage, TrainConfig
 from tasks.classification import ClassificationTask
+
+
+class _Dummy(nn.Module):
+    def forward(self, x):  # type: ignore[no-untyped-def]
+        return x
+
 
 # ---------- TrainConfig ----------
 
@@ -55,9 +62,17 @@ def test_stage_overrides_not_shared() -> None:
 # ---------- Experiment ----------
 
 
-class _Dummy(nn.Module):
-    def forward(self, x):  # type: ignore[no-untyped-def]
-        return x
+def _exp(**kwargs) -> Experiment:
+    """Experiment with sensible defaults for tests."""
+    defaults = dict(
+        model=_Dummy,
+        task=ClassificationTask,
+        data="fake",
+        metrics=[CrossEntropy()],
+        primary_metric="loss",
+    )
+    defaults.update(kwargs)
+    return Experiment(**defaults)  # type: ignore[arg-type]
 
 
 def test_experiment_has_no_stages_field() -> None:
@@ -65,8 +80,14 @@ def test_experiment_has_no_stages_field() -> None:
     assert "stages" not in fields
 
 
+def test_experiment_has_metrics_fields() -> None:
+    fields = {f.name for f in dataclasses.fields(Experiment)}
+    assert "metrics" in fields
+    assert "primary_metric" in fields
+
+
 def test_experiment_defaults() -> None:
-    exp = Experiment(model=_Dummy, task=ClassificationTask, data="fake")
+    exp = _exp()
     assert exp.seed == 42
     assert exp.amp is False
     assert isinstance(exp.config, TrainConfig)

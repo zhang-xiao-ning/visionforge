@@ -1,14 +1,4 @@
-"""Experiment specification: TrainConfig / Stage / Experiment.
-
-Three dataclasses that define "how to run an experiment":
-
-- TrainConfig: training parameters (epochs, lr, optimizer, ...)
-- Stage: one phase of multi-stage training (name, freeze, overrides)
-- Experiment: registry entry (which model / task / data + defaults)
-
-The registry (`src/registry.py`) holds Experiment objects. Stages are
-NOT in the registry — they are provided at run time (CLI or YAML).
-"""
+"""Experiment specification: TrainConfig / Stage / Experiment."""
 
 from __future__ import annotations
 
@@ -18,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import torch.nn as nn
 
+    from evaluation.base import Metric
     from tasks.base import Task
 
 
@@ -50,12 +41,7 @@ class TrainConfig:
 
 @dataclass
 class Stage:
-    """One phase of multi-stage training.
-
-    `overrides` is a subset of TrainConfig field names. At runtime the
-    runner merges `Experiment.config` with `stage.overrides` to produce
-    the actual config for this stage.
-    """
+    """One phase of multi-stage training."""
 
     name: str
     freeze: list[str] = field(default_factory=list)
@@ -66,13 +52,16 @@ class Stage:
 class Experiment:
     """Registry entry.
 
-    Holds concrete classes (model / task) and the dataset key, plus
-    defaults (seed / amp / config). Stages are NOT here.
+    Holds concrete classes (model / task), the dataset key, the metric
+    instances used for evaluation, plus defaults (seed / amp / config).
+    Stages are NOT here.
     """
 
     model: type[nn.Module]
     task: type[Task]
     data: str
+    metrics: list[Metric]
+    primary_metric: str
     seed: int = 42
     amp: bool = False
     config: TrainConfig = field(default_factory=TrainConfig)
