@@ -22,7 +22,7 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data.bundle import DataBundle, DataContext
+from data.bundle import DataBundle, DataContext, EvalBundle
 from data.tokenizers import Tokenizer, build_tokenizer
 from runtime import USE_CUDA
 from utils.path import DATASETS_PATH
@@ -130,6 +130,49 @@ class Flickr8kDataset(Dataset[dict[str, Any]]):
         }
 
 
+class Flickr8kImageDataset(Dataset[dict[str, Any]]):
+    """One sample = one image + all its reference captions.
+
+    Used for post-training evaluation (BLEU / CIDEr / METEOR), where each
+    image is generated once and compared against all references.
+    """
+
+    def __init__(
+        self,
+        image_dir: Path,
+        image_names: list[str],
+        captions: dict[str, list[str]],
+        transform: transforms.Compose,
+    ) -> None:
+        self.image_dir = image_dir
+        self.image_names = image_names
+        self.captions = captions
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return len(self.image_names)
+
+    def __getitem__(self, idx: int) -> dict[str, Any]:
+        name = self.image_names[idx]
+        image = Image.open(self.image_dir / name).convert("RGB")
+        return {
+            "image": self.transform(image),
+            "references": self.captions.get(name, []),
+        }
+
+
+def make_eval_collate_fn() -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
+    """Collate for Flickr8kImageDataset. References stay as list[list[str]]."""
+
+    def collate_fn(batch: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "image": torch.stack([b["image"] for b in batch]),
+            "references": [b["references"] for b in batch],
+        }
+
+    return collate_fn
+
+
 def make_collate_fn(pad_id: int) -> Callable[[list[dict[str, Any]]], dict[str, Any]]:
     """Return a collate_fn that pads input_ids / target_ids to the same length."""
 
@@ -234,7 +277,7 @@ def build_bundle(ctx: DataContext) -> DataBundle:
         num_train=ctx.num_train,
     )
 
-    return DataBundle(
+    data = DataBundle(
         loader_train=loader_train,
         loader_val=loader_val,
         loader_test=loader_test,
@@ -244,3 +287,25 @@ def build_bundle(ctx: DataContext) -> DataBundle:
         },
         extras={"tokenizer_name": tokenizer_name},
     )
+
+    eval_data = _build_eval_bundle(root=DATASETS_PATH, batch_size=ctx.batch_size)
+    return data, eval_data
+
+
+def _build_eval_bundle(root: Path, batch_size: int) -> EvalBundle:
+    """Image-level loader for post-training evaluation."""
+    image_dir = root / "Flicker8k_Dataset"
+    text_dir = root / "Flickr8k_text"
+
+    captions = load_captions(text_dir / "Flickr8k.token.txt")
+    test_names = load_split(text_dir / "Flickr_8k.testImages.txt")
+
+    eval_set = Flickr8kImageDataset(image_dir, test_names, captions, _eval_transform())
+    loader = DataLoader(
+        eval_set,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4 if USE_CUDA else 0,
+        collate_fn=make_eval_collate_fn(),
+    )
+    return EvalBundle(loader=loader, extras={})

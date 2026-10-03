@@ -34,3 +34,17 @@ class DataBundle:
     loader_test: DataLoader
     model_init: dict[str, Any] = field(default_factory=dict)
     extras: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class EvalBundle:
+    """Everything needed for post-training evaluation.
+
+    Separate from DataBundle because evaluation may need a different
+    item granularity (e.g. one image + all its references) than training
+    (one image + one caption). A dataset that does not need this returns
+    None.
+    """
+
+    loader: DataLoader
+    extras: dict[str, Any] = field(default_factory=dict)

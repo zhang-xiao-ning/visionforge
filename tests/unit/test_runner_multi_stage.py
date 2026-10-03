@@ -44,7 +44,7 @@ class _MultiStageTask(Task):
         return nn.functional.cross_entropy(model(x), y)
 
 
-def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
+def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
     x = torch.randn(8, 4)
     y = torch.randint(0, 2, (8,))
     loader = DataLoader(TensorDataset(x, y), batch_size=4)
@@ -54,7 +54,7 @@ def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
         loader_test=loader,
         model_init={},
         extras={},
-    )
+    ), None
 
 
 _DEFAULT_STAGES = [

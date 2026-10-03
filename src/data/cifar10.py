@@ -75,4 +75,4 @@ def build_bundle(ctx: DataContext) -> DataBundle:
         loader_test=loader_test,
         model_init={"num_classes": 10},
         extras={},
-    )
+    ), None

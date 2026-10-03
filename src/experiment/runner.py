@@ -14,8 +14,7 @@ from evaluation.base import Metric
 from experiment.artifacts import RunArtifacts
 from experiment.spec import Stage, TrainConfig
 from registry import EXPERIMENTS
-from runtime import PRINT_EVERY, device
-from training.evaluator import evaluate
+from runtime import DTYPE, PRINT_EVERY, device
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy, build_strategy
 from training.tracker import MetricTracker
@@ -99,12 +98,14 @@ class ExperimentRunner:
             num_train=num_train,
             strategy=self.strategy,
         )
-        self.bundle = build_data(self.dataset_name, ctx)
+        self.bundle, self.eval_bundle = build_data(self.dataset_name, ctx)
 
         raw_model = experiment.model.from_data(self.bundle)
         self.model = self.strategy.wrap_model(raw_model, device)
         self.task = experiment.task.from_data(self.bundle)
-        self.metrics: list[Metric] = [m.from_data(self.bundle) for m in experiment.metrics]
+        self.metrics: list[Metric] = [
+            m.from_data(self.bundle, self.eval_bundle) for m in experiment.metrics
+        ]
 
         self.loader_train = self.bundle.loader_train
         self.loader_val = self.bundle.loader_val
@@ -174,7 +175,15 @@ class ExperimentRunner:
                 for m in metrics
                 if m.run_every_n_epochs is not None and ctx.epoch % m.run_every_n_epochs == 0
             ]
-            val_metrics = evaluate(ctx.model, ctx.loader_val, active)
+            val_metrics = {
+                m.name: m.evaluate(
+                    ctx.model,
+                    m.train_loader(self.bundle, self.eval_bundle),
+                    device,
+                    DTYPE,
+                )
+                for m in active
+            }
             ctx.val_metrics = val_metrics
             primary = val_metrics[primary_metric]
             metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in val_metrics.items())
@@ -346,7 +355,15 @@ class ExperimentRunner:
     def _evaluate_test(self) -> float:
         if not self.artifacts.is_main:
             return 0.0
-        test_metrics = evaluate(self.model, self.loader_test, self.metrics)
+        test_metrics = {
+            m.name: m.evaluate(
+                self.model,
+                m.test_loader(self.bundle, self.eval_bundle),
+                device,
+                DTYPE,
+            )
+            for m in self.metrics
+        }
         test_metric = test_metrics[self.primary_metric]
         if self.artifacts.logger is not None:
             metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())

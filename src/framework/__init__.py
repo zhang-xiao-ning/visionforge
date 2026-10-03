@@ -9,7 +9,6 @@ Dependency direction:
     framework   ↛ application
 """
 
-from training.evaluator import evaluate
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy, build_strategy
 from training.tracker import MetricTracker
@@ -22,7 +21,6 @@ from utils.seed import set_seed
 __all__ = [
     # Training
     "train",
-    "evaluate",
     "TrainHooks",
     "StepContext",
     "EpochContext",
