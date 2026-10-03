@@ -1,6 +1,6 @@
 """Registry of available experiments."""
 
-from evaluation import Accuracy, CrossEntropy, Perplexity
+from evaluation import BLEU4, Accuracy, CrossEntropy, Perplexity
 from experiment.spec import Experiment, TrainConfig
 from models.captioning import CaptioningModel
 from models.vit import ViT
@@ -21,7 +21,7 @@ EXPERIMENTS: dict[str, Experiment] = {
         model=CaptioningModel,
         task=CaptioningTask,
         data="flickr8k",
-        metrics=[Perplexity],
+        metrics=[Perplexity, BLEU4],
         primary_metric="perplexity",
         config=TrainConfig(learning_rate=1e-3),
         category="captioning",
