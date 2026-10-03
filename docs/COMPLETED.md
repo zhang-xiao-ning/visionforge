@@ -3,6 +3,64 @@
 已完成的工作记录。按时间倒序。
 
 ---
+## v0.1.1 — 2026-10-03
+
+### 阶段 15：评估层解耦 + BLEU
+
+- [x] **Metric 从 Task 剥离**
+  - 新建 `src/evaluation/`：`Metric` ABC + `Accuracy` / `CrossEntropy` / `Perplexity`
+  - `Task` 只剩 `train_step`（删 `eval_step` / `primary_metric` / `higher_is_better`）
+  - 删 `src/training/evaluator.py`
+  - `Experiment` 加 `metrics` / `primary_metric`
+- [x] **`run_every_n_epochs`**
+  - Metric 声明训中跑不跑（`None` = 训中不跑）
+  - Runner 按字段过滤
+  - 校验 `primary_metric` 必须每 epoch 跑
+- [x] **Metric → ABC**
+  - 对齐 `Task`（不再用 Protocol）
+- [x] **`EvalBundle`**
+  - 训后评估数据独立于训练数据
+  - `build_data` 返回 `tuple[DataBundle, EvalBundle | None]`
+  - Metric 通过 `train_loader` / `test_loader` 声明数据源
+- [x] **BLEU4**
+  - `corpus_bleu`（corpus 级，非 per-sentence 平均）
+  - `BLEU4` metric：`run_every_n_epochs = None`，用 EvalBundle
+- [x] **Flickr8k 加 image 级 Dataset**
+  - `Flickr8kImageDataset`（一张图 + 全部 references）
+
+**验收**：
+- 加新 metric：改 2 文件（`evaluation/xxx.py` + `registry.py`）
+- Runner 零 if——metric 自己声明数据源
+
+## v0.1.1 — 2026-10-01
+
+### 阶段 14：训练范式接口
+
+- [x] **修 bug + `USE_CUDA`**
+  - `test_regression.py` 参数错误、`captioning.py` 重复行、`flickr8k.py` 漏 `num_workers`
+- [x] **`Model` 基类**（`src/models/base.py`）
+  - 默认 `from_data` / `param_groups` / `initialize`
+- [x] **`Task.from_data` 默认**
+  - 对齐 `Model`
+- [x] **`spec.py` 重构**
+  - `TrainConfig` / `Stage` / `Experiment` 三个 dataclass
+  - 删 `src/experiment/config.py`
+  - `stages` 从 Task 移到 spec（Experiment 的配置）
+- [x] **YAML 支持**
+  - `src/experiment/loader.py`：加载 / 校验 / coerce
+  - CLI `--config`
+  - 优先级：`TrainConfig 默认 < Experiment.config < YAML < CLI < stage.overrides`
+- [x] **多阶段 Runner**
+  - 单/多阶段分派
+  - `_apply_freeze` / 重建 optimizer / 重建 tracker
+  - 多阶段不支持 resume（明确报错）
+
+**验收**：
+- 加新模型：改 2 文件
+- 加 LLaVA 冻结/多阶段：YAML 声明，代码 0 改动
+
+---
+
 ## v0.1.1 — 2026-09-28
 
 ### 阶段 13：训练层能力 + 数据先行架构

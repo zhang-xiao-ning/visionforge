@@ -1,16 +1,18 @@
-# Memo 12：训练范式接口
+# Memo 12：训练范式接口 + 评估层解耦
 
-> 让 LLaVA 的"冻结 / 多阶段 / 预训练加载"三个需求成为声明，而不是改代码
-> 时间：2026-10-01
+> 把 LLaVA 的三个需求（冻结/多阶段/预训练加载）从"接入时改代码"变成"接入时声明"；把评估从 Task 剥离为独立一等公民
+> 时间：2026-10-01 ~ 2026-10-03
 > 版本：v0.1.1
 
 ---
 
-## 一、本阶段做了什么（第 41-44 步）
+## 一、本阶段做了什么（第 41-57 步）
 
-### 第 41 步：修 bug + `USE_CUDA` 抽取
+### 阶段 14：训练范式接口（41-50）
 
-**代码审查发现的三个 bug**：
+#### 第 41 步：修 bug + `USE_CUDA`
+
+**代码审查发现 3 个 bug**：
 
 | # | 位置 | 症状 |
 |---|---|---|
@@ -26,13 +28,9 @@ device = get_device()
 USE_CUDA = device.type == "cuda"
 ```
 
-`cifar10.py` 和 `flickr8k.py` 里的 `use_cuda = device.type == "cuda"` 统一改为 `USE_CUDA`。
+`cifar10.py` / `flickr8k.py` 统一用 `USE_CUDA`。语义是"我们打算用 CUDA"，**MPS 不算**——Mac 上 DataLoader 多进程有已知问题。
 
-**关键决策**：`USE_CUDA` 语义是"我们打算用 CUDA"，**MPS 不算**。Mac 上 DataLoader 多进程有已知问题，保持单进程。
-
----
-
-### 第 42 步：`Model` 基类
+#### 第 42 步：`Model` 基类
 
 **产物**：`src/models/base.py`
 
@@ -56,81 +54,21 @@ class Model(nn.Module):
 | `param_groups` | 单组 `{"all": [...]}` | LoRA / 冻结 / 多组 lr |
 | `initialize` | noop | 加载预训练权重 |
 
-**`ViT` / `CaptioningModel` 的改动**：
+**`ViT` / `CaptioningModel`**：继承 `Model`，删各自的 `from_data`。
 
-- 继承从 `nn.Module` 改为 `Model`
-- 删掉各自的 `from_data`（现在继承默认）
-- 删掉文件顶部 `if TYPE_CHECKING: from data.bundle import DataBundle`
+**契约测试**：`tests/contracts/test_model_contract.py`（5 个测试）。
 
-**契约测试**：`tests/contracts/test_model_contract.py`（5 个测试）
+#### 第 43 步：`Task.stages` + `Stage`（后被重构）
 
-- `issubclass(model_cls, Model)` 遍历所有 experiment
-- `param_groups()` 默认覆盖所有参数
-- `initialize()` 默认 noop 且不改变权重
+**产物**：`Task` 加类属性 `stages: list[Stage] | None = None`。
 
-**关键决策**：**ABC + 默认实现**（选项 B），不是 ABC 强制（A），也不是鸭子类型（C）。和 `TrainHooks` 的"默认 noop"哲学一致。
+**后被重构**：`Stage` 从 `Task` 移到 `src/experiment/spec.py`，理由——训练范式是 experiment 的配置，不是 task 的代码。
 
----
+#### 第 44 步：Runner 多阶段（后被重构）
 
-### 第 43 步：`Task.stages` + `Stage`
+**产物**：`ExperimentRunner.run()` 分派单/多阶段。
 
-**产物**：`src/tasks/base.py` 加 `Stage` dataclass，`Task` 加类属性 `stages`
-
-```python
-@dataclass
-class Stage:
-    name: str
-    epochs: int
-    freeze: list[str] = field(default_factory=list)
-
-class Task(ABC):
-    primary_metric: str = "loss"
-    higher_is_better: bool = True
-    stages: list[Stage] | None = None   # None = 单阶段
-```
-
-**`freeze` 里的名字**必须匹配 `Model.param_groups()` 的 key。
-
-**向后兼容**：`stages = None` 表示"用 `TrainConfig.epochs`，走旧逻辑"。`ClassificationTask` / `CaptioningTask` 不改，自动是 `None`。
-
-**契约测试**：`tests/unit/test_task_stages.py`（4 个测试）
-
-- `Stage` 默认值
-- `freeze` 默认不共享（`field(default_factory=list)` 正确）
-- 两个 Task 的 `stages` 默认都是 `None`
-
----
-
-### 第 44 步：Runner 消费 stages
-
-**核心改动**：`ExperimentRunner.run()` 分派
-
-```python
-def run(self):
-    self._log_header()
-    if self.task.stages is None:
-        result = self._run_single_stage()   # 原逻辑，行为零变化
-    else:
-        result = self._run_multi_stage()    # 新增路径
-    self._tracker.restore(self.model)
-    test_acc = self._evaluate_test()
-    self._save_checkpoint(result)
-    return {"test_acc": test_acc, **result}
-```
-
-**多阶段流程**：
-
-```text
-for stage in task.stages:
-    1. _apply_freeze(stage.freeze)         # 设 requires_grad
-    2. self.optimizer = _build_optimizer() # 只含可训练参数
-    3. _build_scheduler(..., stage.epochs) # 每 stage 重建
-    4. self._tracker = _build_tracker()    # 每 stage 重建
-    5. hooks = self._build_hooks()
-    6. train(..., stage_cfg, start_epoch=1)
-```
-
-**关键决策**（P6 讨论已定）：
+**关键决策**（保留）：
 
 | # | 决策 |
 |---|---|
@@ -140,195 +78,11 @@ for stage in task.stages:
 | Q5 | 每 stage **重建 optimizer**（不同 stage 训不同参数，state 无复用） |
 | Q6 | `param_groups()` **不**带 lr（lr 是配置的事） |
 
-**`_apply_freeze`**：
+**后被重构**：stages 从 `Task` 移到 `Experiment` + Runner 构造参数。
 
-```python
-def _apply_freeze(self, freeze: list[str]) -> None:
-    model = _unwrap_model(self.model)
-    groups = model.param_groups()
-    unknown = set(freeze) - set(groups.keys())
-    if unknown:
-        raise ValueError(f"Unknown freeze groups: {sorted(unknown)}. Available: {sorted(groups.keys())}")
-    for name, params in groups.items():
-        should_train = name not in freeze
-        for p in params:
-            p.requires_grad = should_train
-```
+#### 第 45 步：`Task.from_data` 默认
 
-**`_build_optimizer` 改动**：从 `self.model.parameters()` 改为 `[p for p in self.model.parameters() if p.requires_grad]`。单阶段下等价（所有参数都可训）。
-
-**多阶段不支持 resume**：明确报 `NotImplementedError`。理由——每 stage 是 fresh start，resume 单个 stage 的语义未定。
-
-**`cfg.epochs` 在多阶段下被忽略**：用 `dataclasses.replace(cfg, epochs=stage.epochs)` 派生每 stage 的 config。
-
-**契约测试**：`tests/unit/test_runner_multi_stage.py`（6 个测试）
-
-- 多阶段跑完所有 stage
-- `cfg.epochs=999` 不泄漏到多阶段
-- 多阶段 resume 抛 `NotImplementedError`
-- `_apply_freeze` 未知组名抛 `ValueError`
-- `_apply_freeze` 正确设置 `requires_grad`
-- `_apply_freeze([])` 全部解冻
-
----
-
-## 二、核心收获
-
-### 1. 三个接口的对称性
-
-阶段 14 后，`Model` / `Task` / `Tokenzier` 三个抽象都是同一模式：
-
-```text
-接口 + 默认实现 → 子类只覆盖需要的部分
-```
-
-| 抽象 | 基类形态 | 默认实现 |
-|---|---|---|
-| `Tokenizer` | `Protocol` + `@runtime_checkable` | 无（每个方法都要写） |
-| `Task` | `ABC` + `@abstractmethod` | `primary_metric` / `higher_is_better` / `stages` |
-| `Model` | `nn.Module` 子类 | `from_data` / `param_groups` / `initialize` |
-
-**`Tokenizer` 走 Protocol 是因为它没有"默认行为"**——每个 tokenizer 的 encode/decode 完全不同。
-
-**`Task` / `Model` 走 ABC + 默认是因为它们有明确的通用默认**——绝大多数 Task 走 CE loss + accuracy/perplexity，绝大多数 Model 全参数训练。
-
-**判据**："默认实现是否对 80% 的子类正确？"
-
-- 是 → 默认实现（`Task` / `Model`）
-- 否 → Protocol，每个子类都写（`Tokenizer`）
-
-### 2. "接口早，实现晚"的落地
-
-`param_groups` / `stages` / `initialize` 三个接口在第 42-43 步立好，**没有任何具体实现**。`ViT` / `CaptioningModel` 都用默认。
-
-LLaVA 接入时：
-
-- `param_groups` 覆盖为 4 组
-- `stages` 覆盖为 2 阶段
-- `initialize` 覆盖为加载 CLIP + Llama
-
-**接口不改，只加实现**。这就是"接口早做"的收益。
-
-### 3. 多阶段实现的三个独立决策
-
-多阶段是**三个决策的乘积**：
-
-| 决策 | 选择 |
-|---|---|
-| 循环在哪 | Runner |
-| optimizer 复用吗 | 重建 |
-| tracker 复用吗 | 重建 |
-
-每个决策都独立可改。选"重建"的理由是**每 stage 训不同参数集**——state 无复用价值，重建干净。
-
----
-
-## 三、踩的坑
-
-### 坑 1：改继承时漏改 class 声明
-
-第 42 步，我给的指令里说"改 import + 继承"，容易被理解为"检查 import 有没有加"，但**真正要改的是 `class ViT(nn.Module):` → `class ViT(Model):`**。
-
-**症状**：`issubclass(ViT, Model)` 返回 `False`，且 `ViT` 没有继承来的 `param_groups` / `initialize` / `from_data`。
-
-**教训**：单行修改（改 class 声明）必须显式列出"改之前 → 改之后"。
-
-### 坑 2：`monkeypatch.setitem` 不接收字符串路径
-
-第 44 步，测试里写了：
-
-```python
-monkeypatch.setitem("experiment.runner.EXPERIMENTS", "fake_exp", fake_exp)
-#                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 字符串
-```
-
-`monkeypatch.setitem` 接收 **dict 对象**，不是路径。路径只对 `setattr` 有效。
-
-**修法**：
-
-```python
-from registry import EXPERIMENTS
-monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-```
-
-**教训**：`monkeypatch.setattr` 和 `monkeypatch.setitem` API 不对称。
-
-### 坑 3：`Task` 没有默认 `from_data`
-
-第 44 步的测试 `_MultiStageTask` 忘了写 `from_data`，导致 `TypeError: type object '_MultiStageTask' has no attribute 'from_data'`。
-
-**根本原因**：`Model` 有默认 `from_data`（第 42 步加的），但 `Task` 没有。**不对称**。
-
-`ClassificationTask` / `CaptioningTask` 都手写了 `from_data`，所以没暴露。但每个新 Task 都要写这段样板代码。
-
-**待做**：给 `Task` 加默认 `from_data`（`return cls()`），对齐 `Model`。见"下一步"。
-
----
-
-## 四、现在架构
-
-```text
-src/
-├── models/
-│   ├── base.py              ← 新增：Model 基类
-│   ├── vit.py               ← 继承 Model，删 from_data
-│   └── captioning.py        ← 继承 Model，删 from_data
-├── tasks/
-│   └── base.py              ← 加 Stage dataclass + Task.stages
-├── runtime.py               ← 加 USE_CUDA
-├── data/
-│   ├── cifar10.py           ← 用 USE_CUDA
-│   └── flickr8k.py          ← 用 USE_CUDA + num_workers
-└── experiment/
-    └── runner.py            ← run() 分派单/多阶段；新增 _run_multi_stage / _apply_freeze / _build_tracker
-```
-
-**扩展性提升**：
-
-| 维度 | 之前 | 之后 | 提升 |
-|---|---|---|---|
-| 训练范式扩展性 | 4/10 | **8/10** | +4 |
-| 多阶段 | 写死在 Task 代码里 | 声明式 `Task.stages` | — |
-| 冻结 | 无 | 声明式 `Stage.freeze` | — |
-| 预训练加载 | 无接口 | `Model.initialize()` | — |
-| 参数分组 | 无 | `Model.param_groups()` | — |
-
-**"加东西"成本**：
-
-| 动作 | 改动文件数 |
-|---|---|
-| 加新模型（继承 Model） | 2（`models/xxx.py` + `registry.py`） |
-| 加新 task | 2（`tasks/xxx.py` + `registry.py`） |
-| 加 LLaVA 冻结 | 0（覆盖 `param_groups` + YAML 声明 freeze） |
-| 加 LLaVA 多阶段 | 0（覆盖 `stages`） |
-| 加 FSDP | 1（`strategy.py` 加子类） |
-
-**测试**：
-
-```text
-123 passed, 5 deselected
-```
-
-新增 15 个测试：
-- `test_model_contract.py`：5 个（契约）
-- `test_task_stages.py`：4 个（Stage 语义）
-- `test_runner_multi_stage.py`：6 个（多阶段行为）
-
-**Commit 序列**：
-
-```text
-87cb99e feat: add Model base class with default from_data/param_groups/initialize
-f66eed7 feat: add Task.stages and Stage dataclass
-e6b8314 feat: multi-stage training in ExperimentRunner
-```
-
----
-
-## 五、下一步
-
-### 短期补丁（半天）
-
-**补 `Task.from_data` 默认实现**，对齐 `Model`：
+**对齐 `Model`**：
 
 ```python
 class Task(ABC):
@@ -337,33 +91,428 @@ class Task(ABC):
         return cls()
 ```
 
-然后 `ClassificationTask` / `CaptioningTask` 删掉各自的 `from_data`。
+`ClassificationTask` / `CaptioningTask` 删掉各自的 `from_data`。
 
-**触发条件**：LLaVA 的 `CaptioningTaskLLaVA` 接入前，避免样板代码。
+**测试**：`test_task_from_data_inherited` 用 `"from_data" not in cls.__dict__` 检查——**classmethod 不能用 `is` 比较**（每次访问返回新的 bound method）。
 
-### 阶段 15：评估层（半天）
+#### 第 46-47 步：`spec` 重构
 
-**目标**：Captioning 从"只有 perplexity"到"BLEU / CIDEr / METEOR / ROUGE"。
+**新建 `src/experiment/spec.py`**，定义三个 dataclass：
 
-**架构应对**：
+```python
+@dataclass
+class TrainConfig:
+    epochs: int = 1
+    batch_size: int = 64
+    optimizer: str = "sgd"
+    learning_rate: float = 1e-2
+    # ... 共 16 个字段
+    # 移除：experiment / seed / amp
 
-- `Task.eval_step` 已返回 `dict[str, float]`，结构上支持
-- `primary_metric` 是类属性——可能要改成从配置声明
-- 依赖：`pycocoevalcap` 或 `nltk`（在 `tests/` 或 `scripts/`，不进 `src/`）
+@dataclass
+class Stage:
+    name: str
+    freeze: list[str] = field(default_factory=list)
+    overrides: dict[str, Any] = field(default_factory=dict)
+
+@dataclass
+class Experiment:
+    model: type[nn.Module]
+    task: type[Task]
+    data: str
+    metrics: list[Metric]
+    primary_metric: str
+    seed: int = 42
+    amp: bool = False
+    config: TrainConfig = field(default_factory=TrainConfig)
+    category: str = ""
+```
+
+**`registry.py`**：dict → `Experiment` 对象。
+
+**删 `src/experiment/config.py`**（搬到 spec.py）。
+
+**`ExperimentRunner` 签名变化**：
+
+```python
+ExperimentRunner(
+    experiment_name: str,
+    config: TrainConfig,
+    stages: list[Stage] | None = None,
+    amp: bool = False,
+    ...
+)
+```
+
+**`batch_size` 从 Runner 参数移入 `TrainConfig`。**
+
+#### 第 48-50 步：YAML 支持
+
+**新建 `src/experiment/loader.py`**：
+
+```python
+def load_yaml(path) -> dict: ...                # 读 + 校验根结构
+def split_overrides(data) -> dict: ...          # 剥离 experiment/description/stages
+def validate_override_keys(overrides): ...      # 白名单校验
+def coerce_overrides(overrides) -> dict: ...    # 类型转换
+def parse_stages(raw) -> list[Stage]: ...       # stage dict → Stage
+```
+
+**YAML 形态**：
+
+```yaml
+experiment: vit
+description: baseline
+learning_rate: 3e-4
+batch_size: 128
+stages:
+  - name: align
+    freeze: [vision]
+    epochs: 1
+```
+
+**优先级链条**：
+
+```text
+TrainConfig 默认 < Experiment.config < YAML < CLI < stage.overrides
+```
+
+**`cli.py` 改动**：
+
+- 加 `--config`
+- 所有参数 default 改 `None`——区分"用户没传"vs"用户传了"
+- `build_run(args)` 返回 `(experiment_name, config, seed, amp, num_train, stages)`
+
+**YAML 1.1 的坑**：`1e-4` 是字符串，不是 float。`coerce_overrides` 按 `TrainConfig` 的字段类型强制转换。
+
+---
+
+### 阶段 15：评估层解耦（51-57）
+
+#### 第 51-53 步：Metric 从 Task 剥离
+
+**问题**：`Task` 混了 loss / metric / 训练范式。
+
+**新结构**：
+
+| 抽象 | 职责 |
+|---|---|
+| **Task** | loss 定义（`train_step`） |
+| **Metric** | 评估（`evaluate`） |
+| **Experiment** | 声明用哪些 metric + primary |
+
+**`Task` 简化**：
+
+```python
+class Task(ABC):
+    @classmethod
+    def from_data(cls, bundle): return cls()
+
+    @abstractmethod
+    def train_step(self, model, batch, device, dtype) -> torch.Tensor: ...
+```
+
+**删掉**：`eval_step` / `primary_metric` / `higher_is_better`。
+
+**`Metric` 新形态**：
+
+```python
+class Metric(ABC):
+    name: str
+    higher_is_better: bool
+
+    @classmethod
+    def from_data(cls, bundle): return cls()
+
+    @abstractmethod
+    def evaluate(self, model, loader, device, dtype) -> float: ...
+```
+
+**内置 metric**：`Accuracy` / `CrossEntropy` / `Perplexity`。
+
+**`Experiment` 加字段**：
+
+```python
+metrics: list[type[Metric]]      # 类，不是实例
+primary_metric: str
+```
+
+**`registry.py`**：
+
+```python
+"vit": Experiment(
+    model=ViT,
+    task=ClassificationTask,
+    data="cifar10",
+    metrics=[Accuracy, CrossEntropy],
+    primary_metric="acc",
+    ...
+)
+```
+
+**删 `src/training/evaluator.py`**——`evaluate()` 函数不再需要。
+
+#### 第 54 步：`run_every_n_epochs`
+
+**Metric 加一个字段**：
+
+```python
+run_every_n_epochs: int | None = None
+```
+
+| 值 | 含义 |
+|---|---|
+| `1` | 每 epoch 跑（默认） |
+| `N > 1` | 每 N epoch 跑 |
+| `None` | 训中不跑，只训后跑 |
+
+**Runner 过滤**：
+
+```python
+active = [
+    m for m in metrics
+    if m.run_every_n_epochs is not None and ctx.epoch % m.run_every_n_epochs == 0
+]
+```
+
+**校验**：`primary_metric` 必须 `run_every_n_epochs == 1`（否则早停/best model 无数据）。
+
+#### 第 55 步：Metric → ABC
+
+**从 Protocol 改成 ABC**——和 `Task` 对称。
+
+理由：需要给 `from_data` 默认实现。Protocol 无法给默认。
+
+#### 第 56 步：`EvalBundle` + Metric loader 分发
+
+**问题**：训练和评估需要**不同的条目粒度**。
+
+| | 训练 / Perplexity | BLEU / CIDEr |
+|---|---|---|
+| 粒度 | (image, caption) 对 | image + 5 references |
+| 数量（test） | 5000 | 1000 |
+
+**两个 Bundle**：
+
+```python
+@dataclass
+class DataBundle:
+    """训练 + 训中评估。条目粒度 = 训练粒度。"""
+    loader_train: DataLoader
+    loader_val: DataLoader
+    loader_test: DataLoader
+    model_init: dict[str, Any]
+    extras: dict[str, Any]
+
+@dataclass
+class EvalBundle:
+    """训后评估。条目粒度 = 评估粒度。"""
+    loader: DataLoader
+    extras: dict[str, Any] = field(default_factory=dict)
+```
+
+**`build_data` 返回 tuple**：
+
+```python
+def build_data(name, ctx) -> tuple[DataBundle, EvalBundle | None]:
+    return DATASET_REGISTRY[name](ctx)
+```
+
+**`Metric` 加两个方法**：
+
+```python
+def train_loader(self, data, eval_data) -> DataLoader:
+    """训中评估用。默认 data.loader_val。"""
+    return data.loader_val
+
+def test_loader(self, data, eval_data) -> DataLoader:
+    """训后评估用。默认 data.loader_test。"""
+    return data.loader_test
+```
+
+**Runner 不做分发**——每个 metric 自己声明用哪个 loader。
+
+**Flickr8k 新增**：
+
+- `Flickr8kImageDataset`：一张图 + 全部 references
+- `make_eval_collate_fn()`
+- `_build_eval_bundle()`：构造 image 级 loader
+
+#### 第 57 步：BLEU4
+
+**`src/evaluation/bleu.py`**：
+
+```python
+def corpus_bleu(predictions, references, max_n=4) -> float: ...
+
+class BLEU4(Metric):
+    name = "bleu4"
+    higher_is_better = True
+    run_every_n_epochs = None       # 训中不跑
+
+    def __init__(self, tokenizer, max_new_tokens=32): ...
+
+    @classmethod
+    def from_data(cls, data, eval_data=None):
+        tokenizer = build_tokenizer(data.extras["tokenizer_name"])
+        return cls(tokenizer=tokenizer)
+
+    def test_loader(self, data, eval_data):
+        assert eval_data is not None
+        return eval_data.loader
+
+    def evaluate(self, model, loader, device, dtype) -> float:
+        # 遍历 image 级 batch
+        # model.generate + decode
+        # corpus_bleu(predictions, references)
+```
+
+**BLEU 数学要点**：
+
+- **Corpus 级**，不是"每句算再平均"——全局 n-gram 统计
+- Brevity penalty：`gen_len < ref_len` 时惩罚
+- 多参考：取"最接近生成长度的参考"计算 ref_len
+
+---
+
+## 二、核心收获
+
+### 1. 三个角色完全对称
+
+| | Model | Task | Metric |
+|---|---|---|---|
+| 基类 | `nn.Module` 子类 | `ABC` | `ABC` |
+| `from_data` | 默认 `cls(**model_init)` | 默认 `cls()` | 默认 `cls()` |
+| 抽象方法 | `forward` | `train_step` | `evaluate` |
+| 注册表存 | 类 | 类 | 类 |
+| 构造时机 | bundle 之后 | bundle 之后 | bundle 之后 |
+
+**"接口 + 默认实现"贯穿三者。**
+
+### 2. "接口早，实现晚"的落地
+
+`param_groups` / `stages` / `initialize` 三个接口在第 42-47 步立好，**没有任何具体实现**。LLaVA 接入时覆盖即可。
+
+### 3. 评估层解耦
+
+**三个维度**：
+
+| 维度 | 字段 | 位置 |
+|---|---|---|
+| 执行时机 | `run_every_n_epochs` | Metric |
+| 数据源 | `train_loader` / `test_loader` | Metric |
+| 数据粒度 | `DataBundle` vs `EvalBundle` | Dataset |
+
+**Runner 零 if。** 加新 metric 只加 metric 类 + registry 一行。
+
+### 4. YAML 的三层优先级
+
+```text
+TrainConfig 默认 < Experiment.config < YAML < CLI < stage.overrides
+```
+
+**YAML 一个文件一套配置。** 名字用 `experiment:` 字段（不是文件名），`description` 人类可读。
+
+---
+
+## 三、踩的坑
+
+### 坑 1：改继承时漏改 class 声明
+
+第 42 步，`class ViT(nn.Module):` → `class ViT(Model):` 容易漏。**症状**：`issubclass(ViT, Model)` 为 `False`，`ViT` 没有继承来的方法。
+
+### 坑 2：`monkeypatch.setitem` 不接收字符串路径
+
+`monkeypatch.setitem("a.b.C", ...)` 会报错——它只接收 dict 对象。`monkeypatch.setattr` 才支持字符串路径。
+
+### 坑 3：`classmethod` 不能用 `is` 比较
+
+```python
+assert ClassificationTask.from_data is Task.from_data   # ❌ 永远 False
+assert "from_data" not in ClassificationTask.__dict__   # ✅
+```
+
+描述符协议每次返回新的 bound method。
+
+### 坑 4：`Task` 没有默认 `from_data`
+
+第 44 步的 `_MultiStageTask` 忘了写 `from_data`，`AttributeError`。**根本原因**：`Model` 有默认，`Task` 没有——不对称。第 45 步补齐。
+
+### 坑 5：YAML 1.1 把 `1e-4` 解析成字符串
+
+只有 `1.0e-4` 或 `0.0001` 是 float。解法：`coerce_overrides` 按 `TrainConfig` 字段类型强制转换。
+
+### 坑 6：`build_data` 返回 tuple 后大量测试挂
+
+`test_runner*.py` 里的 `_fake_data_bundle` 要改成返回 `(DataBundle, None)`。
+
+### 坑 7：BLEU 测试用例设计
+
+"per-sentence 平均 ≠ corpus BLEU"的测试，第一组数据恰好两个算法都得 0.5。换一组（`["a b c d", "x y z"]` vs `[["a b c d"], ["a b c"]]`）。
+
+---
+
+## 四、现在架构
+
+```text
+src/
+├── evaluation/                 ← 新目录
+│   ├── base.py                 ← Metric ABC + train_loader / test_loader
+│   ├── metrics.py              ← Accuracy / CrossEntropy / Perplexity
+│   └── bleu.py                 ← corpus_bleu + BLEU4
+├── models/
+│   └── base.py                 ← Model 基类
+├── experiment/
+│   ├── spec.py                 ← TrainConfig + Stage + Experiment
+│   ├── loader.py               ← YAML 加载 + 校验 + coerce
+│   ├── runner.py               ← 单/多阶段 + 训中/训后评估
+│   └── artifacts.py
+├── data/
+│   ├── bundle.py               ← DataBundle + EvalBundle
+│   ├── datasets.py             ← build_data 返回 tuple
+│   └── flickr8k.py             ← Flickr8kDataset + Flickr8kImageDataset
+├── tasks/
+│   └── base.py                 ← 只剩 train_step
+└── training/
+    ├── train.py                ← 训练循环
+    ├── hooks.py
+    ├── strategy.py
+    └── tracker.py
+```
+
+**删**：`src/experiment/config.py`、`src/training/evaluator.py`。
+
+**"加东西"成本**：
+
+| 动作 | 改动文件数 |
+|---|---|
+| 加新模型 | 2（`models/xxx.py` + `registry.py`） |
+| 加新 task | 2（`tasks/xxx.py` + `registry.py`） |
+| 加新 metric | 2（`evaluation/xxx.py` + `registry.py`） |
+| 加 LLaVA 冻结 | 0（覆盖 `param_groups` + YAML freeze） |
+| 加 LLaVA 多阶段 | 0（YAML `stages:`） |
+| 加 FSDP | 1（`strategy.py` 加子类） |
+
+**测试**：
+
+```text
+179 passed, 3 deselected
+```
+
+---
+
+## 五、下一步
 
 ### 阶段 16：LLaVA-A 推理（1 天）
 
-**目标**：脚本级加载现有 LLaVA 权重，跑通对话。
-
-**约束**：
-
-- `transformers` 只出现在 `scripts/`，不进 `src/`
-- **不改 framework**
-- 4bit 量化（4070 12G 显存）
+- 脚本级（`scripts/llava_infer.py`）
+- 不改 framework
+- 4bit 量化（4070 12G）
+- `transformers` 只在 `scripts/`
 
 ### 阶段 17：LLaVA-B LoRA 微调（2-3 天）
 
-**目标**：冻结 + LoRA。**这一步会真正撞到 `DataBundle` 强类型化问题。**
+**这一步会真正撞到 `DataBundle` 强类型化问题**。
 
 ### 阶段 18-19：YAML workflow + LLaVA-C 从 0 训
 
@@ -373,16 +522,15 @@ class Task(ABC):
 
 ## 六、一句话
 
-> **本阶段把 LLaVA 的三个需求（冻结 / 多阶段 / 预训练加载）从"接入时改 framework"变成"接入时声明"。**
+> **本阶段把"训练范式"和"评估"从 Task 剥离，成为一等公民的声明式配置。**
 
 - `Model.param_groups()` → 声明"我有几组参数"
-- `Task.stages` → 声明"我要分几阶段训"
-- `Model.initialize()` → 声明"我从哪里加载权重"
+- `Stage.freeze` → 声明"这一阶段冻谁"
+- `Experiment.metrics` → 声明"用哪些评估"
+- `Metric.run_every_n_epochs` → 声明"训中跑不跑"
 
 **框架不动，只加声明。这就是"接口早，实现晚"的收益。**
 
 ---
 
-*Last updated: 2026-10-01*
-
----
+*Last updated: 2026-10-03*

@@ -5,9 +5,10 @@
 Image classification and image captioning with PyTorch.
 
 A small, clean, extensible training framework. Supports multiple tasks
-(classification on CIFAR-10, captioning on Flickr8k), distributed
-training, ONNX export, a FastAPI inference service, and a full local
-dev environment (lint + type check + tests + pre-commit + CI).
+(classification on CIFAR-10, captioning on Flickr8k), multi-stage
+training, first-class evaluation metrics, distributed training, ONNX
+export, a FastAPI inference service, and a full local dev environment
+(lint + type check + tests + pre-commit + CI).
 
 ---
 
@@ -70,8 +71,6 @@ datasets/
     └── Flickr_8k.testImages.txt
 ```
 
-Each `data_batch_*` should be ~30 MB.
-
 ---
 
 ## Training
@@ -87,6 +86,39 @@ uv run python src/main.py --experiment vit --epochs 5
 uv run python src/main.py --experiment captioning --epochs 5 --batch-size 32
 ```
 
+### YAML config
+
+```bash
+make train CFG=configs/vit-baseline.yaml
+```
+
+YAML format:
+
+```yaml
+experiment: vit          # required; must exist in the registry
+description: baseline    # optional, human-readable
+learning_rate: 3e-4
+batch_size: 128
+epochs: 10
+
+# multi-stage (optional)
+stages:
+  - name: align
+    freeze: [vision, llm_base]
+    epochs: 1
+  - name: instruct
+    freeze: [vision]
+    epochs: 2
+```
+
+Priority chain:
+
+```text
+TrainConfig default < Experiment.config < YAML < CLI < stage.overrides
+```
+
+Example configs live in `configs/`.
+
 ### Common training options
 
 | Goal | Command |
@@ -97,14 +129,6 @@ uv run python src/main.py --experiment captioning --epochs 5 --batch-size 32
 | Stability | `make train EXP=captioning CLIP=1.0` |
 | Mixed precision (CUDA) | `make train EXP=captioning AMP=1` |
 | Quick debug | `make train EXP=vit NUM=1000` |
-
-Or directly:
-
-```bash
-uv run python src/main.py --experiment captioning --epochs 5 \
-    --optimizer adamw --lr-scheduler cosine --warmup-steps 100 \
-    --accum-steps 4 --grad-clip 1.0
-```
 
 ### Resume from checkpoint
 
@@ -133,25 +157,26 @@ make train-docker EXP=vit EPOCHS=1
 
 | Argument | Description | Default |
 |---|---|---|
+| `--config` | Path to a YAML config file | none |
 | `--experiment` | Experiment name (`vit` / `captioning`) | `vit` |
-| `--batch-size` | Batch size | `64` |
-| `--epochs` | Number of epochs | `1` |
+| `--batch-size` | Batch size | per-experiment default |
+| `--epochs` | Number of epochs | per-experiment default |
 | `--learning-rate` | Learning rate | per-experiment default |
-| `--momentum` | SGD momentum | `0.9` |
+| `--momentum` | SGD momentum | per-experiment default |
 | `--no-nesterov` | Disable Nesterov momentum | off |
-| `--seed` | Random seed | `42` |
-| `--lr-scheduler` | `none` / `step` / `cosine` | `none` |
-| `--step-size` | StepLR step size | `10` |
-| `--gamma` | StepLR decay factor | `0.1` |
+| `--seed` | Random seed | per-experiment default |
+| `--lr-scheduler` | `none` / `step` / `cosine` | per-experiment default |
+| `--step-size` | StepLR step size | per-experiment default |
+| `--gamma` | StepLR decay factor | per-experiment default |
 | `--early-stop-patience` | Early stopping patience | `0` (disabled) |
 | `--resume` | Resume from checkpoint path | none |
 | `--amp` | Mixed precision (CUDA only) | off |
 | `--num-train` | Limit training samples | all |
-| `--optimizer` | `sgd` / `adamw` | `sgd` |
-| `--weight-decay` | Weight decay (AdamW) | `0.0` |
-| `--warmup-steps` | Step-level LR warmup | `0` |
-| `--accum-steps` | Gradient accumulation steps | `1` |
-| `--grad-clip` | Gradient clipping norm | `0.0` |
+| `--optimizer` | `sgd` / `adamw` | per-experiment default |
+| `--weight-decay` | Weight decay (AdamW) | per-experiment default |
+| `--warmup-steps` | Step-level LR warmup | per-experiment default |
+| `--accum-steps` | Gradient accumulation steps | per-experiment default |
+| `--grad-clip` | Gradient clipping norm | per-experiment default |
 
 ### Environment variables
 
@@ -167,10 +192,28 @@ USE_GPU=false make train EXP=vit EPOCHS=1   # force CPU
 
 ## Supported experiments
 
-| Name | Data | Model | Default LR | Notes |
-|---|---|---|---|---|
-| `vit` | CIFAR-10 | Small ViT | `3e-4` | patch=4, dim=192, depth=6 |
-| `captioning` | Flickr8k | ViT encoder + Transformer decoder | `1e-3` | perplexity ~50 |
+| Name | Data | Model | Metrics | Primary | Notes |
+|---|---|---|---|---|---|
+| `vit` | CIFAR-10 | Small ViT | `acc`, `loss` | `acc` | patch=4, dim=192, depth=6 |
+| `captioning` | Flickr8k | ViT encoder + Transformer decoder | `perplexity`, `bleu4` | `perplexity` | perplexity ~50 |
+
+---
+
+## Evaluation
+
+Metrics are first-class objects (`src/evaluation/`). Each metric
+declares:
+
+- `name` — key in CSV / log
+- `higher_is_better` — for best-model selection
+- `run_every_n_epochs` — `1` (every epoch), `N` (every N), `None` (test only)
+- `train_loader` / `test_loader` — which data to iterate
+- `evaluate(model, loader, device, dtype) -> float` — the scoring itself
+
+Evaluation data may differ in **granularity** from training data. For
+example, captioning evaluation uses image-level batches (one image + all
+5 references), while training uses pair-level batches (one image + one
+caption). This is handled by `EvalBundle` (separate from `DataBundle`).
 
 ---
 
@@ -191,17 +234,8 @@ Verifies PyTorch vs ONNX output (max diff < 1e-5) as part of the export.
 make sample CKPT=checkpoints/captioning_xxx.pt IMG=datasets/Flicker8k_Dataset/xxx.jpg
 ```
 
-Or directly:
-
-```bash
-uv run python scripts/sample_caption.py \
-    --checkpoint checkpoints/captioning_xxx.pt \
-    --image datasets/Flicker8k_Dataset/xxx.jpg
-```
-
 **Self-contained checkpoints**: `sample_caption.py` reconstructs the
-tokenizer and model from metadata stored in the checkpoint. No extra
-arguments needed.
+tokenizer and model from metadata stored in the checkpoint.
 
 ### FastAPI service
 
@@ -238,7 +272,7 @@ outputs/<exp>_<timestamp>/        # TensorBoard event files
 checkpoints/<exp>_<timestamp>.pt  # model + optimizer + scheduler + model_init + extras
 ```
 
-The checkpoint is **self-contained**: it stores everything needed to
+Checkpoints are **self-contained**: they store everything needed to
 rebuild the model and resume training.
 
 ```python
@@ -262,9 +296,9 @@ visionforge/
 ├── src/
 │   ├── __init__.py
 │   ├── py.typed
-│   ├── runtime.py              # constants + get_device()
-│   ├── registry.py             # EXPERIMENTS (name -> data/model/task/lr)
-│   ├── cli.py                  # argparse -> TrainConfig
+│   ├── runtime.py              # constants + get_device() + USE_CUDA
+│   ├── registry.py             # EXPERIMENTS (name -> Experiment)
+│   ├── cli.py                  # argparse + YAML -> run parameters
 │   ├── main.py                 # entry point
 │   ├── data/
 │   │   ├── tokenizers/         # Tokenizer protocol + adapters + factory
@@ -272,23 +306,30 @@ visionforge/
 │   │   │   ├── char.py
 │   │   │   └── tiktoken_bpe.py
 │   │   ├── transforms.py
-│   │   ├── bundle.py           # DataBundle + DataContext
+│   │   ├── bundle.py           # DataBundle + EvalBundle + DataContext
 │   │   ├── cifar10.py
-│   │   ├── flickr8k.py
-│   │   └── datasets.py         # registry: name -> build_bundle
+│   │   ├── flickr8k.py         # pair-level + image-level datasets
+│   │   └── datasets.py         # registry: name -> (DataBundle, EvalBundle|None)
 │   ├── models/
+│   │   ├── base.py             # Model ABC
 │   │   ├── vit.py
 │   │   └── captioning.py
 │   ├── tasks/
-│   │   ├── base.py             # Task protocol
+│   │   ├── base.py             # Task ABC (train_step only)
 │   │   ├── classification.py
 │   │   └── captioning.py
+│   ├── evaluation/             # first-class metrics
+│   │   ├── base.py             # Metric ABC + train_loader/test_loader
+│   │   ├── metrics.py          # Accuracy / CrossEntropy / Perplexity
+│   │   └── bleu.py             # corpus_bleu + BLEU4
 │   ├── training/
 │   │   ├── train.py
-│   │   ├── evaluator.py
-│   │   └── strategy.py         # SingleDevice / DDP
+│   │   ├── hooks.py
+│   │   ├── strategy.py         # SingleDevice / DDP
+│   │   └── tracker.py
 │   ├── experiment/
-│   │   ├── config.py           # TrainConfig
+│   │   ├── spec.py             # TrainConfig + Stage + Experiment
+│   │   ├── loader.py           # YAML load + validate + coerce
 │   │   ├── artifacts.py        # RunArtifacts
 │   │   └── runner.py           # ExperimentRunner
 │   ├── export/
@@ -307,16 +348,11 @@ visionforge/
 │   ├── contracts/              # protocol contracts
 │   │   ├── conftest.py
 │   │   ├── test_classification_contract.py
+│   │   ├── test_model_contract.py
 │   │   └── test_tokenizer_contract.py
 │   ├── unit/                   # fast, no IO
-│   │   ├── conftest.py
-│   │   └── ... (14 files)
 │   └── integration/            # need real data + env flag
-│       ├── conftest.py
-│       ├── test_captioning_integration.py
-│       ├── test_data_integration.py
-│       ├── test_integration.py
-│       └── test_regression.py
+├── configs/                    # example YAML experiment configs
 ├── docker/
 │   ├── Dockerfile.serve
 │   └── Dockerfile.train
@@ -329,7 +365,7 @@ visionforge/
 │   ├── TODO.md
 │   ├── COMPLETED.md
 │   ├── architecture-notes.md
-│   └── memo-1.md ~ memo-10.md
+│   └── memo-1.md ~ memo-12.md
 ├── datasets/                   # (not in git)
 ├── checkpoints/                # (not in git)
 ├── outputs/                    # (not in git)
@@ -402,7 +438,7 @@ macOS / Linux / CI.
 
 - **`tests/unit/`** — fast, no real data, run by default
 - **`tests/contracts/`** — verify every implementation of a protocol
-  (all tokenizers, all classification models)
+  (all tokenizers, all classification models, all registered models)
 - **`tests/integration/`** — need real data on disk + `RUN_INTEGRATION=1`
 
 ```bash
@@ -421,39 +457,43 @@ Markers are defined in `pyproject.toml`; the default `addopts` excludes
 
 ### Adding a new model
 
-1. Create `src/models/<name>.py` with an `nn.Module` subclass.
+1. Create `src/models/<name>.py` with a `Model` subclass.
 
 2. If the model's constructor needs data-derived parameters
-   (e.g. `num_classes`, `vocab_size`), implement `from_data`:
+   (e.g. `num_classes`, `vocab_size`), override `from_data`:
 
    ```python
-   @classmethod
-   def from_data(cls, bundle: "DataBundle") -> "MyModel":
-       return cls(**bundle.model_init)
+   from models.base import Model
+
+   class MyModel(Model):
+       @classmethod
+       def from_data(cls, bundle):
+           return cls(**bundle.model_init)
    ```
 
-   For fixed-shape models, no `from_data` is required — declare a
-   `build_model` in the dataset bundle, or add a small wrapper.
+   The default `from_data` already does this. Override only if you need
+   `bundle.extras`.
 
 3. Register it in `src/registry.py`:
 
    ```python
-   EXPERIMENTS["my_model"] = {
-       "data": "cifar10",
-       "model": MyModel,
-       "task": ClassificationTask,
-       "lr": 1e-3,
-       "category": "classification",
-   }
+   EXPERIMENTS["my_model"] = Experiment(
+       model=MyModel,
+       task=ClassificationTask,
+       data="cifar10",
+       metrics=[Accuracy, CrossEntropy],
+       primary_metric="acc",
+       config=TrainConfig(learning_rate=1e-3),
+       category="classification",
+   )
    ```
 
-4. Contract tests (in `tests/contracts/`) automatically pick it up
-   via `EXPERIMENTS` iteration.
+4. Contract tests (in `tests/contracts/`) automatically pick it up.
 
 ### Adding a new dataset
 
-1. Create `src/data/<name>.py` with a `build_bundle(ctx: DataContext)
-   -> DataBundle` function.
+1. Create `src/data/<name>.py` with a `build_bundle(ctx) -> (DataBundle, EvalBundle | None)`
+   function.
 
 2. Register it in `src/data/datasets.py`:
 
@@ -465,51 +505,55 @@ Markers are defined in `pyproject.toml`; the default `addopts` excludes
    }
    ```
 
-   For classification-style datasets, also add to `DATASET_INFO`:
+   Return `(DataBundle(...), None)` if no separate evaluation loader is
+   needed.
 
-   ```python
-   DATASET_INFO = {
-       "cifar10": DatasetInfo(input_shape=(3, 32, 32), num_classes=10),
-       "my_dataset": DatasetInfo(input_shape=(1, 28, 28), num_classes=10),
-   }
-   ```
-
-3. Reference it in `src/registry.py`:
-
-   ```python
-   EXPERIMENTS["my_exp"] = {
-       "data": "my_dataset",
-       "model": MyModel,
-       "task": ClassificationTask,
-       "lr": 1e-3,
-       "category": "classification",
-   }
-   ```
+3. Reference it from `src/registry.py`.
 
 ### Adding a new task
 
-Subclass `Task` and implement three things:
+Subclass `Task` and implement one method:
 
 ```python
 from tasks.base import Task
 
 class MyTask(Task):
-    primary_metric = "loss"
-    higher_is_better = False
-
-    @classmethod
-    def from_data(cls, bundle: "DataBundle") -> "MyTask":
-        return cls()
-
     def train_step(self, model, batch, device, dtype) -> torch.Tensor:
         """Compute loss for one batch. Do NOT call backward."""
-
-    def eval_step(self, model, batch, device, dtype) -> dict[str, float]:
-        """Compute metrics for one batch."""
 ```
 
-Then register it in `src/registry.py`. `train.py` does not need to
-change.
+Then register it in `src/registry.py`. `train.py` does not need to change.
+
+### Adding a new metric
+
+1. Create `src/evaluation/<name>.py` with a `Metric` subclass:
+
+   ```python
+   from evaluation.base import Metric
+
+   class MyMetric(Metric):
+       name = "mymetric"
+       higher_is_better = True
+       run_every_n_epochs = 1        # 1 = every epoch, N = every N, None = test only
+
+       @classmethod
+       def from_data(cls, data, eval_data=None):
+           return cls()
+
+       def evaluate(self, model, loader, device, dtype) -> float:
+           ...
+   ```
+
+2. Add it to the experiment's `metrics` list in `src/registry.py`:
+
+   ```python
+   metrics=[Perplexity, BLEU4],
+   ```
+
+3. If the metric needs a different data source than the default
+   (`data.loader_val` / `data.loader_test`), override `train_loader` /
+   `test_loader`. `BLEU4` is the reference: it uses `eval_data.loader`
+   (image-level batches with all references).
 
 ### Adding a new training strategy (FSDP, DeepSpeed, ...)
 
