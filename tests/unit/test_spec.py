@@ -68,7 +68,7 @@ def _exp(**kwargs) -> Experiment:
         model=_Dummy,
         task=ClassificationTask,
         data="fake",
-        metrics=[CrossEntropy()],
+        metrics=[CrossEntropy],
         primary_metric="loss",
     )
     defaults.update(kwargs)

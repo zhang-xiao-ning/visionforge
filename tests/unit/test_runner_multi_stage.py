@@ -69,7 +69,7 @@ def patched_runner(monkeypatch, tmp_path: Path):
         model=_TwoGroupModel,
         task=_MultiStageTask,
         data="fake",
-        metrics=[CrossEntropy()],
+        metrics=[CrossEntropy],
         primary_metric="loss",
         category="classification",
     )

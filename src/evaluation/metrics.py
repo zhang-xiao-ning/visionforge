@@ -5,10 +5,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from evaluation.base import Metric
+
 IGNORE_INDEX = -100
 
 
-class Accuracy:
+class Accuracy(Metric):
     name = "acc"
     higher_is_better = True
     run_every_n_epochs = 1
@@ -31,7 +33,7 @@ class Accuracy:
         return correct / max(total, 1)
 
 
-class CrossEntropy:
+class CrossEntropy(Metric):
     name = "loss"
     higher_is_better = False
     run_every_n_epochs = 1
@@ -53,7 +55,7 @@ class CrossEntropy:
         return total_loss / max(n, 1)
 
 
-class Perplexity:
+class Perplexity(Metric):
     name = "perplexity"
     higher_is_better = False
     run_every_n_epochs = 1

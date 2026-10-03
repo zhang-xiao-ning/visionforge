@@ -82,7 +82,6 @@ class ExperimentRunner:
 
         experiment = EXPERIMENTS[experiment_name]
         self.dataset_name = experiment.data
-        self.metrics: list[Metric] = experiment.metrics
         self.primary_metric = experiment.primary_metric
 
         self.artifacts = RunArtifacts.create(
@@ -105,6 +104,7 @@ class ExperimentRunner:
         raw_model = experiment.model.from_data(self.bundle)
         self.model = self.strategy.wrap_model(raw_model, device)
         self.task = experiment.task.from_data(self.bundle)
+        self.metrics: list[Metric] = [m.from_data(self.bundle) for m in experiment.metrics]
 
         self.loader_train = self.bundle.loader_train
         self.loader_val = self.bundle.loader_val

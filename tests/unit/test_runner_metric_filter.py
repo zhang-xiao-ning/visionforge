@@ -34,20 +34,38 @@ class _TinyTask(Task):
         return nn.functional.cross_entropy(model(x), y)
 
 
-class _CountingMetric:
-    """Counts how many times evaluate() is called."""
+class _CountingBase(Metric):
+    """Counts evaluate() calls in a class-level counter."""
 
     higher_is_better = True
     run_every_n_epochs: int | None = 1
-
-    def __init__(self, name: str, value: float = 0.5) -> None:
-        self.name = name
-        self.value = value
-        self.calls = 0
+    calls: int = 0
 
     def evaluate(self, model, loader, device, dtype) -> float:
-        self.calls += 1
-        return self.value
+        type(self).calls += 1
+        return 0.5
+
+
+class _Primary(_CountingBase):
+    name = "primary"
+
+
+class _Slow(_CountingBase):
+    name = "slow"
+    run_every_n_epochs = None
+
+
+class _Every2(_CountingBase):
+    name = "every2"
+    run_every_n_epochs = 2
+
+
+@pytest.fixture(autouse=True)
+def _reset_counters():
+    _Primary.calls = 0
+    _Slow.calls = 0
+    _Every2.calls = 0
+    yield
 
 
 def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
@@ -65,13 +83,13 @@ def _fake_data_bundle(name: str, ctx) -> DataBundle:  # noqa: ARG001
 
 @pytest.fixture
 def setup(monkeypatch, tmp_path: Path):
-    def make(metrics: list[Metric]) -> ExperimentRunner:
+    def make(metrics: list[type[Metric]], primary: str) -> ExperimentRunner:
         fake_exp = Experiment(
             model=_TinyModel,
             task=_TinyTask,
             data="fake",
             metrics=metrics,
-            primary_metric=metrics[0].name,
+            primary_metric=primary,
             category="classification",
         )
         monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
@@ -88,46 +106,32 @@ def setup(monkeypatch, tmp_path: Path):
 
 
 def test_none_metric_runs_only_at_test(setup) -> None:
-    primary = _CountingMetric("primary")
-    slow = _CountingMetric("slow")
-    slow.run_every_n_epochs = None
-
-    runner = setup([primary, slow])
+    runner = setup([_Primary, _Slow], primary="primary")
     runner.run()
     runner.cleanup()
 
     # primary: 3 train epochs + 1 test = 4
-    assert primary.calls == 4
+    assert _Primary.calls == 4
     # slow: 0 train + 1 test = 1
-    assert slow.calls == 1
+    assert _Slow.calls == 1
 
 
 def test_every_2_epochs(setup) -> None:
-    primary = _CountingMetric("primary")
-    every2 = _CountingMetric("every2")
-    every2.run_every_n_epochs = 2
-
-    runner = setup([primary, every2])
+    runner = setup([_Primary, _Every2], primary="primary")
     runner.run()
     runner.cleanup()
 
     # 3 epochs: primary runs every epoch (3) + test (1) = 4
-    assert primary.calls == 4
-    # every2 runs on epoch 2 (epochs 1,2,3 → 2 % 2 == 0) + test (1) = 2
-    assert every2.calls == 2
+    assert _Primary.calls == 4
+    # every2 runs on epoch 2 only + test = 2
+    assert _Every2.calls == 2
 
 
 def test_primary_metric_must_run_every_epoch(setup) -> None:
-    primary = _CountingMetric("primary")
-    primary.run_every_n_epochs = 2
-
     with pytest.raises(ValueError, match="must run every epoch"):
-        setup([primary])
+        setup([_Every2], primary="every2")
 
 
 def test_primary_metric_cannot_be_test_only(setup) -> None:
-    primary = _CountingMetric("primary")
-    primary.run_every_n_epochs = None
-
     with pytest.raises(ValueError, match="must run every epoch"):
-        setup([primary])
+        setup([_Slow], primary="slow")
