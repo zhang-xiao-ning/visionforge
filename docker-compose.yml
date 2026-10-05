@@ -7,6 +7,8 @@ services:
     container_name: visionforge-api
     ports:
       - "8000:8000"
+    volumes:
+      - ./exports:/app/exports:ro
     environment:
       - ONNX_PATH=/app/exports/mlp.onnx
     restart: unless-stopped

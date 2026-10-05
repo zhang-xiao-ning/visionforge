@@ -23,6 +23,7 @@ tests/
 datasets/
 checkpoints/
 outputs/
+exports/
 
 # Docs
 *.md

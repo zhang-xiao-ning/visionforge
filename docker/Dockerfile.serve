@@ -19,9 +19,11 @@ RUN pip install --no-cache-dir \
     "onnxruntime<1.20" \
     "numpy<2"
 
-# 复制代码和 ONNX 模型
+# 复制代码
 COPY src/ ./src/
-COPY exports/ ./exports/
+
+# exports/ 由 docker-compose 以 volume 挂载；standalone 运行时手动 -v
+RUN mkdir -p /app/exports
 
 ENV PYTHONPATH=/app/src
 ENV ONNX_PATH=/app/exports/mlp.onnx
