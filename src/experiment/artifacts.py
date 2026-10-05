@@ -32,8 +32,7 @@ class RunArtifacts:
     ckpt_path: Path
     cfg_path: Path
     tb_dir: Path
-    logger: AppLogger | None
-    is_main: bool
+    logger: AppLogger
 
     @classmethod
     def create(
@@ -68,9 +67,7 @@ class RunArtifacts:
             csv_path = outputs_dir / f"{base}.csv"
             csv_append = False
 
-        is_main = strategy.is_main_process()
-
-        if is_main:
+        if strategy.is_main_process():
             outputs_dir.mkdir(parents=True, exist_ok=True)
             checkpoints_dir.mkdir(parents=True, exist_ok=True)
             logger = get_logger(
@@ -89,10 +86,9 @@ class RunArtifacts:
             cfg_path=cfg_path,
             tb_dir=tb_dir,
             logger=logger,
-            is_main=is_main,
         )
 
-        if is_main:
+        if strategy.is_main_process():
             artifacts.save_snapshot(
                 experiment_name=experiment_name,
                 dataset_name=dataset_name,
@@ -120,5 +116,4 @@ class RunArtifacts:
             json.dump(snapshot, f, indent=2, ensure_ascii=False)
 
     def close(self) -> None:
-        if self.logger is not None:
-            self.logger.close()
+        self.logger.close()

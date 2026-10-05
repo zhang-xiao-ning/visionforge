@@ -16,7 +16,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from experiment.spec import TrainConfig
-from runtime import DTYPE, USE_CUDA, device
+from runtime import DTYPE
 from tasks.base import Task
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy
@@ -43,9 +43,10 @@ def train(
     """
     if hooks.logger is not None:
         hooks.logger.flow(f"Enter function: train, rank: {strategy.rank}")
+    device = strategy.device
 
     # ---- one-time setup ----
-    amp_enabled = amp and USE_CUDA
+    amp_enabled = amp and device.type == "cuda"
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
     last_epoch = start_epoch - 1
 

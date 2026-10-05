@@ -24,7 +24,6 @@ def test_create_returns_correct_paths(tmp_path: Path, any_experiment: str) -> No
         checkpoints_dir=tmp_path / "checkpoints",
     )
 
-    assert artifacts.is_main is True
     assert artifacts.logger is not None
 
     assert artifacts.base.startswith(any_experiment)
@@ -64,7 +63,6 @@ def test_non_main_process_skips_logger_and_writer(tmp_path: Path, any_experiment
         checkpoints_dir=tmp_path / "checkpoints",
     )
 
-    assert artifacts.is_main is False
     assert artifacts.logger is not None
     assert not artifacts.cfg_path.exists()
 

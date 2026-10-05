@@ -4,7 +4,8 @@ A strategy encapsulates everything that differs between training topologies:
 
 - how the model is wrapped (plain vs DDP)
 - how the training/validation data is sampled
-- who is allowed to log / save checkpoints (rank 0 only in DDP)
+- which device this process uses
+- who is allowed to save checkpoints (rank 0 only in DDP)
 
 Adding a new topology (FSDP, DeepSpeed, ...) means adding a new subclass,
 without touching the rest of the codebase.
@@ -12,6 +13,7 @@ without touching the rest of the codebase.
 
 import os
 from collections.abc import Sized
+from pathlib import Path
 from typing import Any, cast
 
 import torch
@@ -34,8 +36,13 @@ class TrainingStrategy:
     #: Process rank. 0 for single-device; set by DDPStrategy.
     rank: int = 0
 
-    def wrap_model(self, model: nn.Module, device: torch.device) -> nn.Module:
-        """Optionally wrap the model (e.g. DDP) and move it to the right device."""
+    @property
+    def device(self) -> torch.device:
+        """The device this process trains on."""
+        raise NotImplementedError
+
+    def wrap_model(self, model: nn.Module) -> nn.Module:
+        """Optionally wrap the model (e.g. DDP) and move it to this device."""
         raise NotImplementedError
 
     def make_train_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
@@ -53,6 +60,11 @@ class TrainingStrategy:
         """
         return True
 
+    def save(self, path: Path, payload: Any) -> None:
+        """Save a checkpoint. Only the main process actually writes."""
+        if self.is_main_process():
+            torch.save(payload, path)
+
     def on_epoch_start(self, epoch: int) -> None:
         """Hook called at the start of every epoch."""
         return
@@ -65,8 +77,19 @@ class TrainingStrategy:
 class SingleDeviceStrategy(TrainingStrategy):
     """Single process, single device (CPU, MPS, or one GPU)."""
 
-    def wrap_model(self, model: nn.Module, device: torch.device) -> nn.Module:
-        return model.to(device)
+    def __init__(self, device: torch.device | None = None) -> None:
+        if device is None:
+            from runtime import get_device
+
+            device = get_device()
+        self._device = device
+
+    @property
+    def device(self) -> torch.device:
+        return self._device
+
+    def wrap_model(self, model: nn.Module) -> nn.Module:
+        return model.to(self._device)
 
     def make_train_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
         n = len(cast(Sized, dataset))
@@ -84,23 +107,28 @@ class DDPStrategy(TrainingStrategy):
     Uses NCCL on CUDA, Gloo otherwise (CPU fallback for testing).
     """
 
-    def __init__(self, device: torch.device) -> None:
-        self.device = device
-
+    def __init__(self) -> None:
         if not dist.is_initialized():
-            backend = "nccl" if device.type == "cuda" else "gloo"
+            backend = "nccl" if torch.cuda.is_available() else "gloo"
             dist.init_process_group(backend=backend)
 
         self.rank = dist.get_rank()
         self.local_rank = int(os.environ.get("LOCAL_RANK", 0))
         self._train_sampler: DistributedSampler | None = None
 
-        if device.type == "cuda":
+        if torch.cuda.is_available():
+            self._device = torch.device("cuda", self.local_rank)
             torch.cuda.set_device(self.local_rank)
+        else:
+            self._device = torch.device("cpu")
 
-    def wrap_model(self, model: nn.Module, device: torch.device) -> nn.Module:
-        if device.type == "cuda":
-            model = model.to(self.local_rank)
+    @property
+    def device(self) -> torch.device:
+        return self._device
+
+    def wrap_model(self, model: nn.Module) -> nn.Module:
+        model = model.to(self._device)
+        if self._device.type == "cuda":
             return DDP(model, device_ids=[self.local_rank])
         return DDP(model)
 
@@ -123,8 +151,8 @@ class DDPStrategy(TrainingStrategy):
             dist.destroy_process_group()
 
 
-def build_strategy(device: torch.device) -> TrainingStrategy:
+def build_strategy() -> TrainingStrategy:
     """Auto-detect: torchrun sets RANK + WORLD_SIZE, otherwise single device."""
     if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
-        return DDPStrategy(device)
+        return DDPStrategy()
     return SingleDeviceStrategy()

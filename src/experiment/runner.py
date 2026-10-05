@@ -14,7 +14,7 @@ from evaluation.base import Metric
 from experiment.artifacts import RunArtifacts
 from experiment.spec import Stage, TrainConfig
 from registry import EXPERIMENTS
-from runtime import DTYPE, PRINT_EVERY, device
+from runtime import DTYPE, PRINT_EVERY
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy, build_strategy
 from training.tracker import MetricTracker
@@ -77,7 +77,7 @@ class ExperimentRunner:
         self.amp = amp
         self.resume_path = resume_path
         self.num_train = num_train
-        self.strategy = strategy if strategy is not None else build_strategy(device)
+        self.strategy = strategy if strategy is not None else build_strategy()
 
         experiment = EXPERIMENTS[experiment_name]
         self.dataset_name = experiment.data
@@ -101,7 +101,7 @@ class ExperimentRunner:
         self.bundle, self.eval_bundle = build_data(self.dataset_name, ctx)
 
         raw_model = experiment.model.from_data(self.bundle)
-        self.model = self.strategy.wrap_model(raw_model, device)
+        self.model = self.strategy.wrap_model(raw_model)
         self.task = experiment.task.from_data(self.bundle)
         self.metrics: list[Metric] = [
             m.from_data(self.bundle, self.eval_bundle) for m in experiment.metrics
@@ -160,7 +160,6 @@ class ExperimentRunner:
             return TrainHooks(logger=self.artifacts.logger)
 
         logger = self.artifacts.logger
-        assert logger is not None
         tracker = self._tracker
         metrics = self.metrics
         primary_metric = self.primary_metric
@@ -179,7 +178,7 @@ class ExperimentRunner:
                 m.name: m.evaluate(
                     ctx.model,
                     m.train_loader(self.bundle, self.eval_bundle),
-                    device,
+                    self.strategy.device,
                     DTYPE,
                 )
                 for m in active
@@ -228,7 +227,7 @@ class ExperimentRunner:
         if self.resume_path is None:
             return 1, 0.0
 
-        ckpt = torch.load(self.resume_path, map_location=device)
+        ckpt = torch.load(self.resume_path, map_location="cpu")
         _unwrap_model(self.model).load_state_dict(ckpt["model"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
         if self.scheduler is not None and ckpt.get("scheduler") is not None:
@@ -237,7 +236,7 @@ class ExperimentRunner:
         start_epoch = ckpt["epoch"] + 1
         best_acc = ckpt["best_acc"]
 
-        if self.artifacts.is_main and self.artifacts.logger is not None:
+        if self.strategy.is_main_process():
             self.artifacts.logger.info(f"Resumed from {self.resume_path}")
             self.artifacts.logger.info(f"Resume at epoch {start_epoch}, best_acc = {best_acc:.4f}")
 
@@ -285,11 +284,10 @@ class ExperimentRunner:
         stages = self.stages
         result: dict[str, float | int] = {}
         for i, stage in enumerate(stages, start=1):
-            if self.artifacts.logger is not None:
-                self.artifacts.logger.flow(
-                    f"Stage {i}/{len(stages)}: {stage.name} "
-                    f"(freeze={stage.freeze}, overrides={stage.overrides})"
-                )
+            self.artifacts.logger.flow(
+                f"Stage {i}/{len(stages)}: {stage.name} "
+                f"(freeze={stage.freeze}, overrides={stage.overrides})"
+            )
 
             self._apply_freeze(stage.freeze)
             self.optimizer = self._build_optimizer()
@@ -341,39 +339,39 @@ class ExperimentRunner:
     # ---------- helpers ----------
 
     def _log_header(self) -> None:
-        if not self.artifacts.is_main or self.artifacts.logger is None:
+        if not self.strategy.is_main_process():
             return
         logger = self.artifacts.logger
         logger.info("=" * 60)
         logger.info(f"Experiment: {self.experiment_name}")
         logger.info(f"Dataset: {self.dataset_name}")
-        logger.info(f"Device: {device}")
+        logger.info(f"Device: {self.strategy.device}")
         logger.info(f"Config: {self.cfg}")
         logger.info(format_env_info())
         logger.info("=" * 60)
 
     def _evaluate_test(self) -> float:
-        if not self.artifacts.is_main:
+        if not self.strategy.is_main_process():
             return 0.0
         test_metrics = {
             m.name: m.evaluate(
                 self.model,
                 m.test_loader(self.bundle, self.eval_bundle),
-                device,
+                self.strategy.device,
                 DTYPE,
             )
             for m in self.metrics
         }
         test_metric = test_metrics[self.primary_metric]
-        if self.artifacts.logger is not None:
-            metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())
-            self.artifacts.logger.info(f"Test {metrics_str}")
+        metrics_str = ", ".join(f"{k} = {v:.4f}" for k, v in test_metrics.items())
+        self.artifacts.logger.info(f"Test {metrics_str}")
         return test_metric
 
     def _save_checkpoint(self, result: dict[str, float | int]) -> None:
-        if not self.artifacts.is_main:
+        if not self.strategy.is_main_process():
             return
-        torch.save(
+        self.strategy.save(
+            self.artifacts.ckpt_path,
             {
                 "model": _unwrap_model(self.model).state_dict(),
                 "optimizer": self.optimizer.state_dict(),
@@ -384,7 +382,5 @@ class ExperimentRunner:
                 "model_init": self.bundle.model_init,
                 "extras": self.bundle.extras,
             },
-            self.artifacts.ckpt_path,
         )
-        if self.artifacts.logger is not None:
-            self.artifacts.logger.info(f"Saved to {self.artifacts.ckpt_path}")
+        self.artifacts.logger.info(f"Saved to {self.artifacts.ckpt_path}")

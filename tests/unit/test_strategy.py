@@ -19,9 +19,9 @@ def test_single_device_is_main_process() -> None:
 
 
 def test_single_device_wrap_model_returns_same_model() -> None:
-    strategy = SingleDeviceStrategy()
+    strategy = SingleDeviceStrategy(device=torch.device("cpu"))
     model = torch.nn.Linear(4, 2)
-    wrapped = strategy.wrap_model(model, torch.device("cpu"))
+    wrapped = strategy.wrap_model(model)
     assert wrapped is model
 
 
@@ -52,5 +52,5 @@ def test_single_device_cleanup_is_noop() -> None:
 def test_build_strategy_returns_single_device_by_default(monkeypatch) -> None:
     monkeypatch.delenv("RANK", raising=False)
     monkeypatch.delenv("WORLD_SIZE", raising=False)
-    strategy = build_strategy(torch.device("cpu"))
+    strategy = build_strategy()
     assert isinstance(strategy, SingleDeviceStrategy)
