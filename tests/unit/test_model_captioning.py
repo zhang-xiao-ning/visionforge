@@ -106,3 +106,37 @@ def test_tie_weights_false_untied() -> None:
         tie_weights=False,
     )
     assert model.lm_head.weight is not model.token_embed.weight
+
+
+def test_generate_forces_eos_after_finish() -> None:
+    """After a sample emits EOS, remaining positions are EOS, not garbage.
+
+    Regression test: without the mask, samples in a batch that finish
+    early keep generating arbitrary ids after EOS, polluting BLEU.
+    """
+    model = _make_model(vocab_size=10, pad_id=0, max_len=16)
+    eos_id = 2
+    step = {"n": 0}
+
+    def fake_forward(images, input_ids):
+        step["n"] += 1
+        B, L = input_ids.shape
+        logits = torch.zeros(B, L, 10, device=images.device)
+        if step["n"] == 1:
+            # 样本 0 第一步就 EOS；样本 1 预测 token 5
+            logits[0, -1, eos_id] = 1.0
+            logits[1, -1, 5] = 1.0
+        else:
+            # 之后所有样本都预测 token 5（非 EOS）
+            logits[:, -1, 5] = 1.0
+        return logits
+
+    model.forward = fake_forward  # type: ignore[method-assign]
+
+    images = torch.randn(2, 3, 64, 64)
+    out = model.generate(images, bos_id=1, eos_id=eos_id, max_new_tokens=3)
+
+    # 样本 0: [BOS, EOS, EOS, EOS]，EOS 后是 EOS 填充
+    # 样本 1: [BOS, 5, 5, 5]，永不结束
+    assert out[0].tolist() == [1, eos_id, eos_id, eos_id]
+    assert out[1].tolist() == [1, 5, 5, 5]

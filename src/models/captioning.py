@@ -181,26 +181,34 @@ class CaptioningModel(Model):
         eos_id: int,
         max_new_tokens: int = 32,
     ) -> torch.Tensor:
-        """
-        Greedy autoregressive decode.
+        """Greedy autoregressive decode.
 
         Args:
             images: (B, 3, H, W)
+            bos_id: beginning-of-sequence token id
+            eos_id: end-of-sequence token id
+            max_new_tokens: maximum number of new tokens (excluding BOS)
+
         Returns:
-            generated ids (B, T) including BOS, excluding trailing padding.
+            generated ids (B, T), T = 1 + number_of_decode_steps.
+            Samples that hit EOS early are filled with eos_id afterwards,
+            so `decode(skip_special=True)` yields the correct text.
         """
         B = images.size(0)
         device = images.device
         generated = torch.full((B, 1), bos_id, dtype=torch.long, device=device)
+        finished = torch.zeros(B, dtype=torch.bool, device=device)
 
-        # BOS 已占 1 位，剩下最多生成 max_len - 1 个
         limit = min(max_new_tokens, self.max_len - 1)
 
         for _ in range(limit):
             logits = self.forward(images, generated)  # (B, L, V)
-            next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)
+            next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
+
+            next_token = next_token.masked_fill(finished.unsqueeze(-1), eos_id)
             generated = torch.cat([generated, next_token], dim=1)
-            if (next_token == eos_id).all():
+            finished = finished | (next_token.squeeze(-1) == eos_id)
+            if finished.all():
                 break
 
         return generated
