@@ -10,7 +10,7 @@ pytestmark = pytest.mark.integration
 
 def test_build_data_real(require_integration, require_cifar10) -> None:
     """Full pipeline: dataset files → DataBundle."""
-    bundle = build_data(
+    bundle, eval_bundle = build_data(
         "cifar10",
         DataContext(batch_size=64),
     )
@@ -18,3 +18,4 @@ def test_build_data_real(require_integration, require_cifar10) -> None:
     assert x.shape == (64, 3, 32, 32)
     assert y.shape == (64,)
     assert bundle.model_init == {"num_classes": 10}
+    assert eval_bundle is None  # cifar10 needs no separate eval set
