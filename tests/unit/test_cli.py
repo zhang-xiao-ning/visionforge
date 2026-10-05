@@ -48,7 +48,7 @@ def _write_yaml(tmp_path: Path, content: str) -> str:
 
 def test_default_experiment() -> None:
     name, cfg, _, _, _, stages = build_run(_ns())
-    assert name == "vit"  # DEFAULT_EXPERIMENT
+    assert name == "mlp"  # DEFAULT_EXPERIMENT
     assert stages is None
 
 

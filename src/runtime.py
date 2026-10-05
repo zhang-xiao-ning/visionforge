@@ -13,7 +13,7 @@ PRINT_EVERY = 100
 NUM_TRAIN = 49000
 BATCH_SIZE = 64
 DTYPE = torch.float32
-DEFAULT_EXPERIMENT = "vit"
+DEFAULT_EXPERIMENT = "mlp"
 
 
 def get_device() -> torch.device:

@@ -240,7 +240,7 @@ tokenizer and model from metadata stored in the checkpoint.
 ### FastAPI service
 
 ```bash
-make serve                                  # default ONNX=exports/vit.onnx
+make serve                                  # default ONNX=exports/mlp.onnx
 make serve ONNX=exports/vit.onnx PORT=8001
 ```
 
