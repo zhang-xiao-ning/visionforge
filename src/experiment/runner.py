@@ -31,7 +31,11 @@ def _build_scheduler(
     cfg: TrainConfig,
     steps_per_epoch: int,
 ) -> tuple[lr_scheduler.LRScheduler | None, str]:
-    total_steps = cfg.epochs * steps_per_epoch
+    # Optimizer steps happen every `accum_steps` batches. Batches at the
+    # tail that don't complete an accumulation window are dropped, matching
+    # train.py's `(t + 1) % accum_steps == 0` condition.
+    opt_steps_per_epoch = max(1, steps_per_epoch // cfg.accum_steps)
+    total_steps = cfg.epochs * opt_steps_per_epoch
 
     if cfg.warmup_steps > 0:
 
