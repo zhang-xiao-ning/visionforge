@@ -3,11 +3,21 @@
 from evaluation import BLEU4, Accuracy, CrossEntropy, Perplexity
 from experiment.spec import Experiment, TrainConfig
 from models.captioning import CaptioningModel
+from models.mlp import MLP
 from models.vit import ViT
 from tasks.captioning import CaptioningTask
 from tasks.classification import ClassificationTask
 
 EXPERIMENTS: dict[str, Experiment] = {
+    "mlp": Experiment(
+        model=MLP,
+        task=ClassificationTask,
+        data="cifar10",
+        metrics=[Accuracy, CrossEntropy],
+        primary_metric="acc",
+        config=TrainConfig(learning_rate=1e-2),
+        category="classification",
+    ),
     "vit": Experiment(
         model=ViT,
         task=ClassificationTask,
