@@ -3,6 +3,7 @@
 from evaluation import BLEU4, Accuracy, CrossEntropy, Perplexity
 from experiment.spec import Experiment, TrainConfig
 from models.captioning import CaptioningModel
+from models.mamba import MambaClassifier
 from models.mlp import MLP
 from models.vit import ViT
 from tasks.captioning import CaptioningTask
@@ -25,6 +26,15 @@ EXPERIMENTS: dict[str, Experiment] = {
         metrics=[Accuracy, CrossEntropy],
         primary_metric="acc",
         config=TrainConfig(learning_rate=3e-4),
+        category="classification",
+    ),
+    "mamba": Experiment(
+        model=MambaClassifier,
+        task=ClassificationTask,
+        data="cifar10",
+        metrics=[Accuracy, CrossEntropy],
+        primary_metric="acc",
+        config=TrainConfig(learning_rate=3e-4, batch_size=64),
         category="classification",
     ),
     "captioning": Experiment(
