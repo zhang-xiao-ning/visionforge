@@ -2,13 +2,22 @@
 
 ![CI](https://github.com/zhang-xiao-ning/visionforge/actions/workflows/ci.yml/badge.svg)
 
-Image classification and image captioning with PyTorch.
+A small, clean, extensible PyTorch training framework.
 
-A small, clean, extensible training framework. Supports multiple tasks
-(classification on CIFAR-10, captioning on Flickr8k), multi-stage
-training, first-class evaluation metrics, distributed training, ONNX
-export, a FastAPI inference service, and a full local dev environment
-(lint + type check + tests + pre-commit + CI).
+**Design goal** — adding a new model, task, dataset, or metric should
+mean writing one file. The training loop, evaluation pipeline,
+checkpointing, logging, distributed training, and serving are already
+handled by the framework.
+
+**What's inside** — a pluggable experiment registry, metrics as
+first-class objects with their own data sources, multi-stage training
+with parameter-group freezing, DDP, AMP, gradient accumulation, ONNX
+export with numerical verification, a FastAPI inference service, and a
+full local dev environment (ruff + mypy + pytest + pre-commit + CI).
+
+**Reference experiments** — CIFAR-10 classification and Flickr8k image
+captioning, both intended as worked examples of the extension points
+above.
 
 ---
 
@@ -190,7 +199,7 @@ USE_GPU=false make train EXP=vit EPOCHS=1   # force CPU
 
 ---
 
-## Supported experiments
+## Reference experiments
 
 | Name | Data | Model | Metrics | Primary | Notes |
 |---|---|---|---|---|---|
@@ -451,6 +460,9 @@ Markers are defined in `pyproject.toml`; the default `addopts` excludes
 ---
 
 ## Extending
+
+The framework is designed to be extended. Each of the following takes
+one file and no changes to the training loop:
 
 ### Adding a new model
 
