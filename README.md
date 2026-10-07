@@ -313,6 +313,8 @@ visionforge/
 │   ├── models/
 │   │   ├── base.py             # Model ABC
 │   │   ├── vit.py
+│   │   ├── mlp.py
+│   │   ├── mamba.py
 │   │   └── captioning.py
 │   ├── tasks/
 │   │   ├── base.py             # Task ABC (train_step only)
@@ -361,11 +363,6 @@ visionforge/
 │   ├── download_datasets.sh
 │   ├── sample_caption.py
 │   └── train_ddp.sh
-├── docs/
-│   ├── TODO.md
-│   ├── COMPLETED.md
-│   ├── architecture-notes.md
-│   └── memo-1.md ~ memo-12.md
 ├── datasets/                   # (not in git)
 ├── checkpoints/                # (not in git)
 ├── outputs/                    # (not in git)
@@ -478,14 +475,14 @@ Markers are defined in `pyproject.toml`; the default `addopts` excludes
 
    ```python
    EXPERIMENTS["my_model"] = Experiment(
-       model=MyModel,
-       task=ClassificationTask,
-       data="cifar10",
-       metrics=[Accuracy, CrossEntropy],
-       primary_metric="acc",
-       config=TrainConfig(learning_rate=1e-3),
-       category="classification",
-   )
+        model=MyModel,
+        task=ClassificationTask,
+        data="cifar10",
+        metrics=[Accuracy, CrossEntropy],
+        primary_metric="acc",
+        config=TrainConfig(learning_rate=1e-3),
+        category="classification",
+      )
    ```
 
 4. Contract tests (in `tests/contracts/`) automatically pick it up.
@@ -514,13 +511,13 @@ Markers are defined in `pyproject.toml`; the default `addopts` excludes
 
 Subclass `Task` and implement one method:
 
-```python
-from tasks.base import Task
-
-class MyTask(Task):
-    def train_step(self, model, batch, device, dtype) -> torch.Tensor:
-        """Compute loss for one batch. Do NOT call backward."""
-```
+   ```python
+    from tasks.base import Task
+    
+    class MyTask(Task):
+        def train_step(self, model, batch, device, dtype) -> torch.Tensor:
+            """Compute loss for one batch. Do NOT call backward."""
+   ```
 
 Then register it in `src/registry.py`. `train.py` does not need to change.
 
@@ -573,4 +570,10 @@ branch to `build_strategy()`. No other file needs to change.
 
 ## License
 
-MIT
+Code: MIT (see [LICENSE](LICENSE)).
+
+Datasets are **not** covered by this license:
+- CIFAR-10: released by the University of Toronto for research use.
+- Flickr8k: images are copyrighted by their original Flickr uploaders;
+  the dataset is distributed for research purposes only.
+  This repository does not redistribute any dataset files.
