@@ -525,7 +525,7 @@ Subclass `Task` and implement one method:
 
    ```python
     from tasks.base import Task
-    
+
     class MyTask(Task):
         def train_step(self, model, batch, device, dtype) -> torch.Tensor:
             """Compute loss for one batch. Do NOT call backward."""

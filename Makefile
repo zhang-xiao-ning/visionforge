@@ -64,8 +64,8 @@ install:
 	uv sync
 
 install-hooks:
-	uv run pre-commit install
-	@echo "Pre-commit hook installed."
+	uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
+	@echo "Pre-commit hooks installed (pre-commit + commit-msg)."
 
 # ---- Tests ----
 test:
