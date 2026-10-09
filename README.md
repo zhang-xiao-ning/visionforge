@@ -127,6 +127,93 @@ TrainConfig default < Experiment.config < YAML < CLI < stage.overrides
 ```
 
 Example configs live in `configs/`.
+---
+
+### Multi-stage training
+
+Some experiments need to train in phases with different freezing and
+hyperparameters — e.g. align a vision encoder first, then unfreeze and
+instruct. Declare stages in the YAML:
+
+```yaml
+experiment: captioning
+learning_rate: 1e-3
+stages:
+  - name: align
+    freeze: [encoder]
+    epochs: 2
+    learning_rate: 1e-3
+  - name: finetune
+    freeze: []
+    epochs: 5
+    learning_rate: 1e-4
+    warmup_steps: 100
+```
+
+Each stage runs sequentially, in order. There is no outer `epochs` when
+`stages` is present — each stage's `epochs` is its own length.
+
+**What each stage does**
+
+For every stage, the runner:
+
+1. Sets `requires_grad` for parameter groups named in `freeze`
+2. Rebuilds the optimizer (so frozen params are excluded)
+3. Rebuilds the LR scheduler (warmup / cosine starts fresh)
+4. Resets the metric tracker (early stopping is per stage)
+5. Runs `train(...)` from epoch 1 for that stage's `epochs`
+
+**`freeze`: which parameter groups**
+
+`freeze` lists group names, not parameter names. Group names come from
+`model.param_groups()`, which defaults to `{"all": [...]}`. Models with
+multiple components override it:
+
+```python
+class CaptioningModel(Model):
+    def param_groups(self) -> dict[str, list[nn.Parameter]]:
+        return {
+            "encoder": list(self.encoder.parameters()),
+            "decoder": list(self.decoder.parameters()),
+            "lm_head": list(self.lm_head.parameters()),
+        }
+```
+
+Then `freeze: [encoder]` trains only the decoder and head.
+
+**`overrides`: which fields are settable**
+
+Any `TrainConfig` field can be overridden per stage — `epochs`,
+`learning_rate`, `optimizer`, `warmup_steps`, `accum_steps`, etc.
+Unknown keys raise `ValueError` at load time.
+
+**Priority chain (full)**
+
+```text
+TrainConfig default
+  < Experiment.config          (registry entry)
+  < YAML top-level             (before stages)
+  < CLI                        (--epochs, --learning-rate, ...)
+  < stage.overrides            (per-stage)
+```
+
+Stages always win for the fields they set.
+
+**Resume is not supported for multi-stage runs**
+
+`--resume` raises `NotImplementedError` when `stages` is present. The
+checkpoint format tracks a single `(epoch, best_acc)` pair, which is
+ambiguous across stages. Run from scratch, or use a single-stage
+experiment if you need resume.
+
+**Example**
+
+```bash
+make train CFG=configs/captioning-two-stage.yaml
+```
+
+See `configs/` for ready-to-run examples.
+---
 
 ### Common training options
 
