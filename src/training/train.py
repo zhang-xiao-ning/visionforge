@@ -9,17 +9,31 @@ Entry / exit are logged with the process rank for DDP debugging.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
-from experiment.spec import TrainConfig
 from runtime import DTYPE
 from tasks.base import Task
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy
+
+
+@dataclass
+class LoopConfig:
+    """What the training loop itself needs.
+
+    A subset of the application's TrainConfig — defined here so the
+    framework has no dependency on application code.
+    """
+
+    epochs: int = 1
+    accum_steps: int = 1
+    grad_clip: float = 0.0
 
 
 def train(
@@ -28,7 +42,7 @@ def train(
     loader_train: DataLoader,
     loader_val: DataLoader,
     task: Task,
-    cfg: TrainConfig,
+    loop_cfg: LoopConfig,
     strategy: TrainingStrategy,
     hooks: TrainHooks,
     scheduler: lr_scheduler.LRScheduler | None = None,
@@ -50,7 +64,7 @@ def train(
     scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled)
     last_epoch = start_epoch - 1
 
-    for e in range(start_epoch, cfg.epochs + 1):
+    for e in range(start_epoch, loop_cfg.epochs + 1):
         strategy.on_epoch_start(e)
         if hooks.logger is not None:
             hooks.logger.flow(f"Epoch {e} start, rank: {strategy.rank}")
@@ -64,21 +78,21 @@ def train(
 
             with torch.cuda.amp.autocast(enabled=amp_enabled):
                 loss = task.train_step(model, batch, device, DTYPE)
-                loss = loss / cfg.accum_steps
+                loss = loss / loop_cfg.accum_steps
 
             scaler.scale(loss).backward()
 
-            if (t + 1) % cfg.accum_steps == 0:
-                if cfg.grad_clip > 0:
+            if (t + 1) % loop_cfg.accum_steps == 0:
+                if loop_cfg.grad_clip > 0:
                     scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), loop_cfg.grad_clip)
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()
                 if scheduler is not None and scheduler_mode == "step":
                     scheduler.step()
 
-            unnormalized = loss.item() * cfg.accum_steps
+            unnormalized = loss.item() * loop_cfg.accum_steps
             running_loss += unnormalized
             n_batches += 1
             hooks.on_step(StepContext(epoch=e, step=t, loss=unnormalized))

@@ -18,7 +18,7 @@ from runtime import DTYPE, PRINT_EVERY
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy, build_strategy
 from training.tracker import MetricTracker
-from training.train import train
+from training.train import LoopConfig, train
 from utils.env import format_env_info
 
 
@@ -246,6 +246,15 @@ class ExperimentRunner:
 
         return start_epoch, best_acc
 
+    @staticmethod
+    def _to_loop_config(cfg: TrainConfig) -> LoopConfig:
+        """Application config → framework config. The only adaptor."""
+        return LoopConfig(
+            epochs=cfg.epochs,
+            accum_steps=cfg.accum_steps,
+            grad_clip=cfg.grad_clip,
+        )
+
     # ---------- main flow ----------
 
     def run(self) -> dict[str, float]:
@@ -268,7 +277,7 @@ class ExperimentRunner:
             self.loader_train,
             self.loader_val,
             self.task,
-            self.cfg,
+            self._to_loop_config(self.cfg),
             self.strategy,
             hooks,
             scheduler=self.scheduler,
@@ -310,7 +319,7 @@ class ExperimentRunner:
                 self.loader_train,
                 self.loader_val,
                 self.task,
-                stage_cfg,
+                self._to_loop_config(stage_cfg),
                 self.strategy,
                 hooks,
                 scheduler=self.scheduler,
