@@ -4,6 +4,7 @@ import pytest
 
 from data.bundle import DataContext
 from data.datasets import build_data
+from training.strategy import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
 
@@ -12,7 +13,7 @@ def test_build_data_real(require_integration, require_cifar10) -> None:
     """Full pipeline: dataset files → DataBundle."""
     bundle, eval_bundle = build_data(
         "cifar10",
-        DataContext(batch_size=64),
+        DataContext(batch_size=64, strategy=SingleDeviceStrategy()),
     )
     x, y = next(iter(bundle.loader_train))
     assert x.shape == (64, 3, 32, 32)

@@ -3,6 +3,7 @@
 import pytest
 
 from data.datasets import DATASET_REGISTRY, build_data
+from training.strategy import SingleDeviceStrategy
 
 
 def test_registry_has_cifar10() -> None:
@@ -17,4 +18,4 @@ def test_unknown_dataset_raises() -> None:
     from data.bundle import DataContext
 
     with pytest.raises(ValueError, match="Unknown dataset"):
-        build_data("nope", DataContext(batch_size=4))
+        build_data("nope", DataContext(batch_size=4, strategy=SingleDeviceStrategy()))

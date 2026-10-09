@@ -25,6 +25,7 @@ from torchvision import transforms
 from data.bundle import DataBundle, DataContext, EvalBundle
 from data.tokenizers import Tokenizer, build_tokenizer
 from runtime import USE_CUDA
+from training.strategy import TrainingStrategy
 from utils.path import DATASETS_PATH
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -202,6 +203,7 @@ def make_collate_fn(pad_id: int) -> Callable[[list[dict[str, Any]]], dict[str, A
 def build_captioning_loaders(
     root: Path,
     tokenizer: Tokenizer,
+    strategy: TrainingStrategy,
     batch_size: int = 32,
     num_workers: int = 0,
     max_len: int = 64,
@@ -237,7 +239,7 @@ def build_captioning_loaders(
     loader_train = DataLoader(
         train_set,
         batch_size=batch_size,
-        shuffle=True,
+        sampler=strategy.make_train_sampler(train_set),
         num_workers=num_workers,
         collate_fn=collate,
     )
@@ -272,6 +274,7 @@ def build_bundle(ctx: DataContext) -> DataBundle:
     loader_train, loader_val, loader_test = build_captioning_loaders(
         root=DATASETS_PATH,
         tokenizer=tokenizer,
+        strategy=ctx.strategy,
         batch_size=ctx.batch_size,
         num_workers=4 if USE_CUDA else 0,
         num_train=ctx.num_train,

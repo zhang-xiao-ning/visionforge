@@ -7,12 +7,11 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from data.bundle import DataBundle, DataContext
 from data.transforms import cifar10_test_transform, cifar10_train_transform
 from runtime import NUM_TRAIN, USE_CUDA
-from training.strategy import SingleDeviceStrategy
 from utils.path import DATASETS_PATH
 
 
 def build_datasets() -> tuple[Dataset, Dataset, Dataset]:
-    """返回 (train_set, val_set, test_set)。"""
+    """return (train_set, val_set, test_set)。"""
     train_transform = cifar10_train_transform()
     test_transform = cifar10_test_transform()
 
@@ -43,7 +42,7 @@ def build_bundle(ctx: DataContext) -> DataBundle:
     total = len(cast(Sized, train_set))
     num_train = ctx.num_train if ctx.num_train is not None else NUM_TRAIN
 
-    strategy = ctx.strategy if ctx.strategy is not None else SingleDeviceStrategy()
+    strategy = ctx.strategy
 
     train_subset = Subset(train_set, range(num_train))
     val_subset = Subset(val_set, range(num_train, total))

@@ -21,8 +21,8 @@ class DataContext:
     """Inputs for building a dataset."""
 
     batch_size: int
+    strategy: TrainingStrategy
     num_train: int | None = None
-    strategy: TrainingStrategy | None = None
 
 
 @dataclass
