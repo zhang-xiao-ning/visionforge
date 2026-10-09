@@ -1,10 +1,11 @@
 """Tests for built-in metrics."""
 
+import pytest
 import torch
 import torch.nn as nn
 
 from evaluation import Accuracy, CrossEntropy, Perplexity
-from evaluation.base import Metric
+from evaluation.base import Metric, eval_mode
 
 
 class _DummyClassifier(nn.Module):
@@ -14,6 +15,41 @@ class _DummyClassifier(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.fc(x.flatten(1))
+
+
+class _FailingMetric:
+    """Metric whose evaluate always raises."""
+
+
+def test_eval_mode_restores_train_on_exception() -> None:
+    """If the body raises, model must be back in train mode."""
+    model = _DummyClassifier()
+    model.train()
+
+    with pytest.raises(RuntimeError):
+        with eval_mode(model):
+            raise RuntimeError("boom")
+
+    assert model.training is True
+
+
+def test_eval_mode_preserves_eval_if_was_eval() -> None:
+    """If model was in eval before, stay in eval after."""
+    model = _DummyClassifier()
+    model.eval()
+
+    with eval_mode(model):
+        pass
+
+    assert model.training is False
+
+
+def test_metric_does_not_force_train_mode(dummy_loader) -> None:
+    """If a caller invokes evaluate on an eval-mode model, it stays eval."""
+    model = _DummyClassifier()
+    model.eval()
+    Accuracy().evaluate(model, dummy_loader, torch.device("cpu"), torch.float32)
+    assert model.training is False
 
 
 def test_accuracy_implements_protocol() -> None:
@@ -47,13 +83,6 @@ def test_cross_entropy_positive(dummy_loader) -> None:
     model = _DummyClassifier()
     loss = CrossEntropy().evaluate(model, dummy_loader, torch.device("cpu"), torch.float32)
     assert loss > 0
-
-
-def test_accuracy_restores_train_mode(dummy_loader) -> None:
-    model = _DummyClassifier()
-    model.eval()
-    Accuracy().evaluate(model, dummy_loader, torch.device("cpu"), torch.float32)
-    assert model.training is True
 
 
 def test_metric_is_stateless(dummy_loader) -> None:

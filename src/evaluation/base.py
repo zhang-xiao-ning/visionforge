@@ -15,6 +15,8 @@ references) overrides them.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Self
 
 import torch
@@ -23,6 +25,24 @@ from torch.utils.data import DataLoader
 
 if TYPE_CHECKING:
     from data.bundle import DataBundle, EvalBundle
+
+
+@contextmanager
+def eval_mode(model: nn.Module) -> Iterator[None]:
+    """Run `model` in eval mode with grad disabled.
+
+    Restores the previous training flag on exit, even if an exception
+    is raised. Use this in every Metric.evaluate instead of calling
+    model.eval() / model.train() by hand.
+    """
+    was_training = model.training
+    model.eval()
+    try:
+        with torch.no_grad():
+            yield
+    finally:
+        if was_training:
+            model.train()
 
 
 class Metric(ABC):

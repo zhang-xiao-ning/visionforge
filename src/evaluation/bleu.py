@@ -21,7 +21,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from data.tokenizers import build_tokenizer
-from evaluation.base import Metric
+from evaluation.base import Metric, eval_mode
 
 if TYPE_CHECKING:
     from data.bundle import DataBundle, EvalBundle
@@ -132,7 +132,7 @@ class BLEU4(Metric):
         predictions: list[str] = []
         references: list[list[str]] = []
 
-        with torch.no_grad():
+        with eval_mode(model):
             for batch in loader:
                 images = batch["image"].to(device=device, dtype=dtype)
                 generated = model.generate(
@@ -145,5 +145,4 @@ class BLEU4(Metric):
                     predictions.append(self.tokenizer.decode(ids.tolist()))
                 references.extend(batch["references"])
 
-        model.train()
         return corpus_bleu(predictions, references)
