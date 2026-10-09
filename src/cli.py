@@ -12,7 +12,7 @@ from experiment.loader import (
     split_overrides,
     validate_override_keys,
 )
-from experiment.spec import Stage, TrainConfig
+from experiment.spec import RunParams, Stage
 from registry import EXPERIMENTS
 from runtime import DEFAULT_EXPERIMENT
 
@@ -110,9 +110,7 @@ def _resolve_experiment_name(args: argparse.Namespace) -> tuple[str, dict[str, A
     return yaml_experiment, yaml_data
 
 
-def build_run(
-    args: argparse.Namespace,
-) -> tuple[str, TrainConfig, int, bool, int | None, list[Stage] | None]:
+def build_run(args: argparse.Namespace) -> RunParams:
     """Merge CLI + YAML + registry defaults into run parameters.
 
     Priority (low → high):
@@ -145,4 +143,11 @@ def build_run(
     seed = args.seed if args.seed is not None else experiment.seed
     amp = args.amp or experiment.amp
 
-    return experiment_name, config, seed, amp, args.num_train, stages
+    return RunParams(
+        experiment_name=experiment_name,
+        config=config,
+        seed=seed,
+        amp=amp,
+        num_train=args.num_train,
+        stages=stages,
+    )

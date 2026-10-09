@@ -29,4 +29,6 @@ def get_device() -> torch.device:
 
 # Whether the resolved device is CUDA. Used to decide DataLoader
 # num_workers / pin_memory.
-USE_CUDA = get_device().type == "cuda"
+def use_cuda() -> bool:
+    """Whether the resolved device is CUDA. Computed on demand."""
+    return get_device().type == "cuda"

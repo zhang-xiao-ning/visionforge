@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 from data.bundle import DataBundle, DataContext
 from data.transforms import cifar10_test_transform, cifar10_train_transform
-from runtime import NUM_TRAIN, USE_CUDA
+from runtime import NUM_TRAIN, use_cuda
 from utils.path import DATASETS_PATH
 
 
@@ -47,25 +47,26 @@ def build_bundle(ctx: DataContext) -> DataBundle:
     train_subset = Subset(train_set, range(num_train))
     val_subset = Subset(val_set, range(num_train, total))
 
+    cuda = use_cuda()
     loader_train = DataLoader(
         train_subset,
         batch_size=ctx.batch_size,
         sampler=strategy.make_train_sampler(train_subset),
-        num_workers=4 if USE_CUDA else 0,
-        pin_memory=USE_CUDA,
+        num_workers=4 if cuda else 0,
+        pin_memory=cuda,
     )
     loader_val = DataLoader(
         val_subset,
         batch_size=ctx.batch_size,
         sampler=strategy.make_val_sampler(val_subset),
-        num_workers=4 if USE_CUDA else 0,
-        pin_memory=USE_CUDA,
+        num_workers=4 if cuda else 0,
+        pin_memory=cuda,
     )
     loader_test = DataLoader(
         test_set,
         batch_size=ctx.batch_size,
-        num_workers=4 if USE_CUDA else 0,
-        pin_memory=USE_CUDA,
+        num_workers=4 if cuda else 0,
+        pin_memory=cuda,
     )
 
     return DataBundle(

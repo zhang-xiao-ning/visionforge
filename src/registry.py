@@ -9,6 +9,12 @@ from models.vit import ViT
 from tasks.captioning import CaptioningTask
 from tasks.classification import ClassificationTask
 
+# Each entry is written out in full, even though the classification
+# entries share most fields. This is deliberate: the registry is a
+# configuration file, and a small amount of duplication keeps each
+# experiment self-contained and independently editable. Extracting a
+# helper would force every future divergence (a different metric, a
+# different dataset) to flow through the helper's signature.
 EXPERIMENTS: dict[str, Experiment] = {
     "mlp": Experiment(
         model=MLP,

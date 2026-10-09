@@ -66,3 +66,15 @@ class Experiment:
     amp: bool = False
     config: TrainConfig = field(default_factory=TrainConfig)
     category: str = ""
+
+
+@dataclass
+class RunParams:
+    """What `build_run` produces: everything `main` needs to start a run."""
+
+    experiment_name: str
+    config: TrainConfig
+    seed: int
+    amp: bool
+    num_train: int | None
+    stages: list[Stage] | None

@@ -24,7 +24,7 @@ from torchvision import transforms
 
 from data.bundle import DataBundle, DataContext, EvalBundle
 from data.tokenizers import Tokenizer, build_tokenizer
-from runtime import USE_CUDA
+from runtime import use_cuda
 from training.strategy import TrainingStrategy
 from utils.path import DATASETS_PATH
 
@@ -276,7 +276,7 @@ def build_bundle(ctx: DataContext) -> DataBundle:
         tokenizer=tokenizer,
         strategy=ctx.strategy,
         batch_size=ctx.batch_size,
-        num_workers=4 if USE_CUDA else 0,
+        num_workers=4 if use_cuda() else 0,
         num_train=ctx.num_train,
     )
 
@@ -308,7 +308,7 @@ def _build_eval_bundle(root: Path, batch_size: int) -> EvalBundle:
         eval_set,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4 if USE_CUDA else 0,
+        num_workers=4 if use_cuda() else 0,
         collate_fn=make_eval_collate_fn(),
     )
     return EvalBundle(loader=loader, extras={})
