@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
 
+import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from utils.logger import AppLogger
@@ -30,7 +30,7 @@ class EpochContext:
     epoch: int
     avg_loss: float
     lr: float
-    model: Any
+    model: nn.Module
     loader_val: DataLoader
     val_metrics: dict[str, float] = field(default_factory=dict)
 

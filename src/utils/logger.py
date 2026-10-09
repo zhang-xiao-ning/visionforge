@@ -166,6 +166,10 @@ class AppLogger:
     def close(self) -> None:
         if self._writer is not None:
             self._writer.close()
+        # Close all stdlib handlers to release file descriptors.
+        for handler in self._logger.handlers:
+            handler.close()
+        self._logger.handlers.clear()
 
     # ----- stdlib interop -----
 

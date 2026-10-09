@@ -18,6 +18,14 @@ def _make_logger(tmp_path: Path, **kwargs) -> AppLogger:
     )
 
 
+def test_close_releases_file_handler(tmp_path: Path) -> None:
+    log_path = tmp_path / "test.log"
+    logger = AppLogger("test_close_handlers", log_path)
+    assert logger.raw.handlers  # handler exists before close
+    logger.close()
+    assert logger.raw.handlers == []  # cleared after close
+
+
 # ---------- parse_level ----------
 
 
