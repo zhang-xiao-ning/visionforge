@@ -7,14 +7,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from experiment.runner import ExperimentRunner
-from experiment.spec import Experiment, TrainConfig
+from application.registry import EXPERIMENTS
+from framework.experiment.runner import ExperimentRunner
+from framework.experiment.spec import Experiment, TrainConfig
 from framework.interfaces.bundle import DataBundle
 from framework.interfaces.metric import Metric
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
-from registry import EXPERIMENTS
-from training.strategy import SingleDeviceStrategy
+from framework.training import SingleDeviceStrategy
 
 
 class _TinyModel(Model):
@@ -93,8 +93,9 @@ def setup(monkeypatch, tmp_path: Path):
             category="classification",
         )
         monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-        monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
+        monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
         return ExperimentRunner(
+            experiment=EXPERIMENTS.get("fake_exp"),
             experiment_name="fake_exp",
             config=TrainConfig(epochs=3),
             strategy=SingleDeviceStrategy(),

@@ -3,11 +3,9 @@
 import torch
 import torch.optim as optim
 
-from experiment.spec import TrainConfig
-from tasks.classification import ClassificationTask
-from training.hooks import TrainHooks
-from training.strategy import SingleDeviceStrategy
-from training.train import train
+from application.tasks import ClassificationTask
+from framework.experiment.spec import TrainConfig
+from framework.training import SingleDeviceStrategy, TrainHooks, train
 
 
 def _train(dummy_model, dummy_loader, epochs=1, **kwargs):

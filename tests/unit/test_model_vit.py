@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 
-from models.vit import ViT
+from application.models.vit import ViT
 
 
 def test_output_shape(dummy_batch):

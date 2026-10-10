@@ -79,7 +79,7 @@ class SingleDeviceStrategy(TrainingStrategy):
 
     def __init__(self, device: torch.device | None = None) -> None:
         if device is None:
-            from runtime import get_device
+            from framework.runtime import get_device
 
             device = get_device()
         self._device = device

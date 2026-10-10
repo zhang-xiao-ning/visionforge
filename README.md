@@ -553,7 +553,7 @@ one file and no changes to the training loop:
 
 ### Adding a new model
 
-1. Create `src/models/<name>.py` with a `Model` subclass.
+1. Create `src/application/models/<name>.py` with a `Model` subclass.
 
 2. If the model's constructor needs data-derived parameters
    (e.g. `num_classes`, `vocab_size`), override `from_data`:
@@ -570,7 +570,7 @@ one file and no changes to the training loop:
    The default `from_data` already does this. Override only if you need
    `bundle.extras`.
 
-3. Register it in `src/registry.py`:
+3. Register it in `src/application/registry.py`:
 
    ```python
    EXPERIMENTS["my_model"] = Experiment(
@@ -604,7 +604,7 @@ one file and no changes to the training loop:
    Return `(DataBundle(...), None)` if no separate evaluation loader is
    needed.
 
-3. Reference it from `src/registry.py`.
+3. Reference it from `src/application/registry.py`.
 
 ### Adding a new task
 
@@ -619,7 +619,7 @@ class MyTask(Task):
         """Compute loss for one batch. Do NOT call backward."""
    ```
 
-Then register it in `src/registry.py`. `train.py` does not need to change.
+Then register it in `src/application/registry.py`. `train.py` does not need to change.
 
 ### Adding a new metric
 
@@ -641,7 +641,7 @@ Then register it in `src/registry.py`. `train.py` does not need to change.
            ...
    ```
 
-2. Add it to the experiment's `metrics` list in `src/registry.py`:
+2. Add it to the experiment's `metrics` list in `src/application/registry.py`:
 
    ```python
    metrics=[Perplexity, BLEU4],
@@ -654,7 +654,7 @@ Then register it in `src/registry.py`. `train.py` does not need to change.
 
 ### Adding a new training strategy (FSDP, DeepSpeed, ...)
 
-Subclass `TrainingStrategy` in `src/training/strategy.py` and add a
+Subclass `TrainingStrategy` in `src/framework/training/strategy.py` and add a
 branch to `build_strategy()`. No other file needs to change.
 
 ---

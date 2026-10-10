@@ -9,16 +9,15 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 
 from data.datasets import build_data
-from experiment.artifacts import RunArtifacts
-from experiment.spec import Stage, TrainConfig
+from framework.experiment.artifacts import RunArtifacts
+from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces import DataContext, Metric
-from registry import EXPERIMENTS
-from runtime import DTYPE, PRINT_EVERY
-from training.hooks import EpochContext, StepContext, TrainHooks
-from training.strategy import TrainingStrategy, build_strategy
-from training.tracker import MetricTracker
-from training.train import LoopConfig, train
-from utils.env import format_env_info
+from framework.runtime import DTYPE, PRINT_EVERY
+from framework.training.hooks import EpochContext, StepContext, TrainHooks
+from framework.training.strategy import TrainingStrategy, build_strategy
+from framework.training.tracker import MetricTracker
+from framework.training.train import LoopConfig, train
+from framework.utils.env import format_env_info
 
 
 def _unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
@@ -64,6 +63,7 @@ def _build_scheduler(
 class ExperimentRunner:
     def __init__(
         self,
+        experiment: Experiment,
         experiment_name: str,
         config: TrainConfig,
         stages: list[Stage] | None = None,
@@ -81,8 +81,6 @@ class ExperimentRunner:
         self.resume_path = resume_path
         self.num_train = num_train
         self.strategy = strategy if strategy is not None else build_strategy()
-
-        experiment = EXPERIMENTS[experiment_name]
         self.dataset_name = experiment.data
         self.primary_metric = experiment.primary_metric
 

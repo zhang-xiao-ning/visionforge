@@ -5,16 +5,16 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from experiment.loader import (
+from application.registry import EXPERIMENTS
+from framework.experiment.loader import (
     coerce_overrides,
     load_yaml,
     parse_stages,
     split_overrides,
     validate_override_keys,
 )
-from experiment.spec import RunParams, Stage
-from registry import EXPERIMENTS
-from runtime import DEFAULT_EXPERIMENT
+from framework.experiment.spec import RunParams, Stage
+from framework.runtime import DEFAULT_EXPERIMENT
 
 
 def parse_args() -> argparse.Namespace:

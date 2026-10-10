@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.logger import AppLogger, parse_level
+from framework.utils import AppLogger, parse_level
 
 
 def _make_logger(tmp_path: Path, **kwargs) -> AppLogger:

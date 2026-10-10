@@ -2,7 +2,7 @@
 
 import pytest
 
-from registry import EXPERIMENTS
+from framework.registry import EXPERIMENTS
 
 _CLASSIFICATION_EXPERIMENTS = [
     name for name, exp in EXPERIMENTS.items() if exp.category == "classification"

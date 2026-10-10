@@ -15,11 +15,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from experiment.spec import TrainConfig
-from training.strategy import TrainingStrategy
-from utils.env import get_env_info
-from utils.logger import AppLogger, get_logger
-from utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
+from framework.experiment.spec import TrainConfig
+from framework.training.strategy import TrainingStrategy
+from framework.utils.env import get_env_info
+from framework.utils.logger import AppLogger, get_logger
+from framework.utils.path import CHECKPOINTS_PATH, OUTPUTS_PATH
 
 
 @dataclass

@@ -46,7 +46,7 @@ def dummy_loader():
 @pytest.fixture
 def any_experiment() -> str:
     """Any experiment name for tests that don't care about the specific model."""
-    from registry import EXPERIMENTS
+    from application.registry import EXPERIMENTS
 
     return next(iter(EXPERIMENTS))
 

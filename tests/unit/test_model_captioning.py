@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from models.captioning import CaptioningModel
+from application.models.captioning import CaptioningModel
 
 
 def _make_model(vocab_size: int = 50, pad_id: int = 0, max_len: int = 16) -> CaptioningModel:

@@ -2,8 +2,8 @@
 
 import pytest
 
+from application.registry import EXPERIMENTS
 from framework.interfaces import Model
-from registry import EXPERIMENTS
 
 
 @pytest.fixture(params=list(EXPERIMENTS.keys()))

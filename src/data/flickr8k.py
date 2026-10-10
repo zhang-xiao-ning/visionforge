@@ -24,9 +24,9 @@ from torchvision import transforms
 
 from data.tokenizers import Tokenizer, build_tokenizer
 from framework.interfaces.bundle import DataBundle, DataContext, EvalBundle
-from runtime import use_cuda
-from training.strategy import TrainingStrategy
-from utils.path import DATASETS_PATH
+from framework.runtime import use_cuda
+from framework.training import TrainingStrategy
+from framework.utils import DATASETS_PATH
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]

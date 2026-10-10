@@ -2,10 +2,10 @@
 
 import pytest
 
+from application.models import CaptioningModel
 from data.datasets import build_data
 from framework.interfaces.bundle import DataContext
-from models.captioning import CaptioningModel
-from training.strategy import SingleDeviceStrategy
+from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
 

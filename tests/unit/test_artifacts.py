@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from experiment.artifacts import RunArtifacts
-from experiment.spec import TrainConfig
-from training.strategy import SingleDeviceStrategy
+from framework.experiment.artifacts import RunArtifacts
+from framework.experiment.spec import TrainConfig
+from framework.training import SingleDeviceStrategy
 
 _TEST_DATASET = "cifar10"
 

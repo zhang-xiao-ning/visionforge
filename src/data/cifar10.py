@@ -6,8 +6,8 @@ from torch.utils.data import DataLoader, Dataset, Subset
 
 from data.transforms import cifar10_test_transform, cifar10_train_transform
 from framework.interfaces.bundle import DataBundle, DataContext
-from runtime import NUM_TRAIN, use_cuda
-from utils.path import DATASETS_PATH
+from framework.runtime import NUM_TRAIN, use_cuda
+from framework.utils import DATASETS_PATH
 
 
 def build_datasets() -> tuple[Dataset, Dataset, Dataset]:

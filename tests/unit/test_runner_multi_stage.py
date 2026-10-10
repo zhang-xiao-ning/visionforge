@@ -7,14 +7,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from experiment.runner import ExperimentRunner
-from experiment.spec import Experiment, Stage, TrainConfig
+from framework.experiment.runner import ExperimentRunner
+from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces.bundle import DataBundle
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
 from framework.metrics import CrossEntropy
-from registry import EXPERIMENTS
-from training.strategy import SingleDeviceStrategy
+from framework.registry import EXPERIMENTS
+from framework.training import SingleDeviceStrategy
 
 
 class _TwoGroupModel(Model):
@@ -74,10 +74,11 @@ def patched_runner(monkeypatch, tmp_path: Path):
         category="classification",
     )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-    monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
 
     def make(stages=None) -> ExperimentRunner:
         return ExperimentRunner(
+            experiment=EXPERIMENTS["fake_exp"],
             experiment_name="fake_exp",
             config=TrainConfig(),
             stages=stages if stages is not None else _DEFAULT_STAGES,

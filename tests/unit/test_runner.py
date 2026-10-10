@@ -5,10 +5,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from experiment.runner import ExperimentRunner
-from experiment.spec import TrainConfig
+from application.registry import EXPERIMENTS
+from framework.experiment.runner import ExperimentRunner
+from framework.experiment.spec import TrainConfig
 from framework.interfaces import DataBundle
-from training.strategy import SingleDeviceStrategy
+from framework.training import SingleDeviceStrategy
 
 
 def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
@@ -26,9 +27,10 @@ def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG00
 
 
 def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
 
     runner = ExperimentRunner(
+        experiment=EXPERIMENTS["vit"],
         experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
@@ -45,9 +47,10 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
 
 
 def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
 
     runner = ExperimentRunner(
+        experiment=EXPERIMENTS["vit"],
         experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
@@ -67,9 +70,10 @@ def test_runner_passes_num_train_to_build_data(monkeypatch, tmp_path: Path) -> N
         captured["num_train"] = ctx.num_train
         return _fake_data_bundle(name, ctx)
 
-    monkeypatch.setattr("experiment.runner.build_data", fake_build_data)
+    monkeypatch.setattr("framework.experiment.runner.build_data", fake_build_data)
 
     runner = ExperimentRunner(
+        experiment=EXPERIMENTS["vit"],
         experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),

@@ -8,8 +8,8 @@ import onnxruntime as ort
 import torch
 import torch.nn as nn
 
-from registry import EXPERIMENTS
-from utils.path import CHECKPOINTS_PATH
+from application.registry import EXPERIMENTS
+from framework.utils import CHECKPOINTS_PATH
 
 
 def find_latest_checkpoint(experiment: str) -> Path:

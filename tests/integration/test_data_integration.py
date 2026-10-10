@@ -4,7 +4,7 @@ import pytest
 
 from data.datasets import build_data
 from framework.interfaces.bundle import DataContext
-from training.strategy import SingleDeviceStrategy
+from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
 

@@ -4,9 +4,9 @@ import dataclasses
 
 import pytest
 
-from experiment.runner import ExperimentRunner
-from registry import EXPERIMENTS
-from training.strategy import SingleDeviceStrategy
+from application.registry import EXPERIMENTS
+from framework.experiment.runner import ExperimentRunner
+from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.regression
 

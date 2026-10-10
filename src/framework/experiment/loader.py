@@ -27,7 +27,7 @@ from typing import Any, get_type_hints
 
 import yaml
 
-from experiment.spec import Stage, TrainConfig
+from framework.experiment.spec import Stage, TrainConfig
 
 _RESERVED_KEYS = {"experiment", "description", "stages"}
 

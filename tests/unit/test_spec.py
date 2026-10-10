@@ -4,9 +4,9 @@ import dataclasses
 
 import torch.nn as nn
 
-from experiment.spec import Experiment, Stage, TrainConfig
+from application.tasks import ClassificationTask
+from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.metrics import CrossEntropy
-from tasks.classification import ClassificationTask
 
 
 class _Dummy(nn.Module):

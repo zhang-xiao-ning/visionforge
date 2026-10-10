@@ -15,8 +15,8 @@ from PIL import Image
 
 from data.flickr8k import _eval_transform
 from data.tokenizers import build_tokenizer
-from models.captioning import CaptioningModel
-from runtime import device
+from application.models import CaptioningModel
+from framework.runtime import device
 
 
 def parse_args() -> argparse.Namespace:

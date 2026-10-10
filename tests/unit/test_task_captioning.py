@@ -5,7 +5,7 @@ from typing import Any
 import torch
 import torch.nn as nn
 
-from tasks.captioning import CaptioningTask
+from application.tasks.captioning import CaptioningTask
 
 
 class _DummyCaptioningModel(nn.Module):

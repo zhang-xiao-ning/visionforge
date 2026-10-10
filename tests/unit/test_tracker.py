@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 
-from training.tracker import MetricTracker
+from framework.training import MetricTracker
 
 
 def _model() -> nn.Module:

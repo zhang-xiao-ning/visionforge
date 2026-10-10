@@ -9,7 +9,7 @@ import os
 
 import pytest
 
-from utils.path import DATASETS_PATH
+from framework.utils import DATASETS_PATH
 
 CIFAR10_PATH = DATASETS_PATH / "cifar-10-batches-py"
 FLICKR8K_PATH = DATASETS_PATH / "Flicker8k_Dataset"

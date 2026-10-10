@@ -3,7 +3,7 @@
 import torch
 from torch.utils.data import TensorDataset
 
-from training.strategy import (
+from framework.training import (
     SingleDeviceStrategy,
     build_strategy,
 )

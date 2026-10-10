@@ -13,7 +13,7 @@ from typing import Any
 
 from torch.utils.data import DataLoader
 
-from training.strategy import TrainingStrategy
+from framework.training import TrainingStrategy
 
 
 @dataclass

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from experiment.loader import (
+from framework.experiment.loader import (
     coerce_overrides,
     load_yaml,
     parse_stages,

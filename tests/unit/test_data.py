@@ -3,7 +3,7 @@
 import pytest
 
 from data.datasets import DATASET_REGISTRY, build_data
-from training.strategy import SingleDeviceStrategy
+from framework.training import SingleDeviceStrategy
 
 
 def test_registry_has_cifar10() -> None:

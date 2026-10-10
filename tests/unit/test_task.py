@@ -1,8 +1,8 @@
 """Tests for Task base class."""
 
+from application.tasks import ClassificationTask
+from application.tasks.captioning import CaptioningTask
 from framework.interfaces import Task
-from tasks.captioning import CaptioningTask
-from tasks.classification import ClassificationTask
 
 
 def test_task_default_from_data_returns_instance() -> None:

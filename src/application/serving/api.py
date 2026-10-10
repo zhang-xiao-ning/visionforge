@@ -9,9 +9,9 @@ from pathlib import Path
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
 
-from runtime import DEFAULT_EXPERIMENT
-from serving.inference import OnnxClassifier
-from serving.schema import HealthResponse, Prediction, PredictionResponse
+from application.serving.inference import OnnxClassifier
+from application.serving.schema import HealthResponse, Prediction, PredictionResponse
+from framework.runtime import DEFAULT_EXPERIMENT
 
 DEFAULT_ONNX_PATH = Path(f"exports/{DEFAULT_EXPERIMENT}.onnx")
 

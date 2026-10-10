@@ -3,14 +3,16 @@
 from cli import build_run, parse_args
 from experiment.runner import ExperimentRunner
 from framework import set_seed
+from framework.registry import EXPERIMENTS
 
 
 def main() -> None:
     args = parse_args()
     params = build_run(args)
     set_seed(params.seed)
-
+    experiment = EXPERIMENTS.get(params.experiment_name)
     runner = ExperimentRunner(
+        experiment=experiment,
         experiment_name=params.experiment_name,
         config=params.config,
         stages=params.stages,
