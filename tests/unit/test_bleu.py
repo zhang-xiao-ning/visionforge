@@ -2,7 +2,7 @@
 
 import pytest
 
-from evaluation.bleu import corpus_bleu
+from framework.metrics import corpus_bleu
 
 
 def test_perfect_match() -> None:

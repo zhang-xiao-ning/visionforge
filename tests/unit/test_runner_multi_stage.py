@@ -7,12 +7,12 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from evaluation import CrossEntropy
 from experiment.runner import ExperimentRunner
 from experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces.bundle import DataBundle
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
+from framework.metrics import CrossEntropy
 from registry import EXPERIMENTS
 from training.strategy import SingleDeviceStrategy
 

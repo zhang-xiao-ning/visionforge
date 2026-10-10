@@ -4,8 +4,8 @@ import dataclasses
 
 import torch.nn as nn
 
-from evaluation import CrossEntropy
 from experiment.spec import Experiment, Stage, TrainConfig
+from framework.metrics import CrossEntropy
 from tasks.classification import ClassificationTask
 
 

@@ -45,7 +45,7 @@ def eval_mode(model: nn.Module) -> Iterator[None]:
             model.train()
 
 
-class Matric(ABC):
+class Metric(ABC):
     #: Name used as the key in metrics dicts / CSV columns.
     name: str
 

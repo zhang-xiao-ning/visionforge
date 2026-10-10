@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import torch.nn as nn
 
-    from framework.interfaces import Matric, Task
+    from framework.interfaces import Metric, Task
 
 
 @dataclass
@@ -59,7 +59,7 @@ class Experiment:
     model: type[nn.Module]
     task: type[Task]
     data: str
-    metrics: list[Matric]
+    metrics: list[Metric]
     primary_metric: str
     seed: int = 42
     amp: bool = False

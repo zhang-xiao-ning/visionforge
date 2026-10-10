@@ -4,8 +4,8 @@ import pytest
 import torch
 import torch.nn as nn
 
-from evaluation import Accuracy, CrossEntropy, Perplexity
-from framework.interfaces import Matric, eval_mode
+from framework.interfaces import Metric, eval_mode
+from framework.metrics import Accuracy, CrossEntropy, Perplexity
 
 
 class _DummyClassifier(nn.Module):
@@ -53,15 +53,15 @@ def test_metric_does_not_force_train_mode(dummy_loader) -> None:
 
 
 def test_accuracy_implements_protocol() -> None:
-    assert isinstance(Accuracy(), Matric)
+    assert isinstance(Accuracy(), Metric)
 
 
 def test_cross_entropy_implements_protocol() -> None:
-    assert isinstance(CrossEntropy(), Matric)
+    assert isinstance(CrossEntropy(), Metric)
 
 
 def test_perplexity_implements_protocol() -> None:
-    assert isinstance(Perplexity(), Matric)
+    assert isinstance(Perplexity(), Metric)
 
 
 def test_metric_names_and_directions() -> None:

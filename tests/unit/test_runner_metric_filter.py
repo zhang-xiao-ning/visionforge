@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from experiment.runner import ExperimentRunner
 from experiment.spec import Experiment, TrainConfig
 from framework.interfaces.bundle import DataBundle
-from framework.interfaces.matric import Matric
+from framework.interfaces.metric import Metric
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
 from registry import EXPERIMENTS
@@ -34,7 +34,7 @@ class _TinyTask(Task):
         return nn.functional.cross_entropy(model(x), y)
 
 
-class _CountingBase(Matric):
+class _CountingBase(Metric):
     """Counts evaluate() calls in a class-level counter."""
 
     higher_is_better = True
@@ -83,7 +83,7 @@ def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG00
 
 @pytest.fixture
 def setup(monkeypatch, tmp_path: Path):
-    def make(metrics: list[type[Matric]], primary: str) -> ExperimentRunner:
+    def make(metrics: list[type[Metric]], primary: str) -> ExperimentRunner:
         fake_exp = Experiment(
             model=_TinyModel,
             task=_TinyTask,

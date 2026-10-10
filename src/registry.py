@@ -1,7 +1,8 @@
 """Registry of available experiments."""
 
-from evaluation import BLEU4, Accuracy, CrossEntropy, Perplexity
+from application.metrics import BLEU4
 from experiment.spec import Experiment, TrainConfig
+from framework.metrics import Accuracy, CrossEntropy, Perplexity
 from models.captioning import CaptioningModel
 from models.mamba import MambaClassifier
 from models.mlp import MLP

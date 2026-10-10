@@ -623,12 +623,12 @@ Then register it in `src/registry.py`. `train.py` does not need to change.
 
 ### Adding a new metric
 
-1. Create `src/evaluation/<name>.py` with a `Matric` subclass:
+1. Create `src/evaluation/<name>.py` with a `Metric` subclass:
 
    ```python
-   from framework.interfaces import Matric
+   from framework.interfaces import Metric
 
-   class MyMetric(Matric):
+   class MyMetric(Metric):
        name = "mymetric"
        higher_is_better = True
        run_every_n_epochs = 1        # 1 = every epoch, N = every N, None = test only
