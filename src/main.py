@@ -1,9 +1,9 @@
 """Entry point for training."""
 
 from cli import build_run, parse_args
-from experiment.runner import ExperimentRunner
-from framework import set_seed
+from framework.experiment.runner import ExperimentRunner
 from framework.registry import EXPERIMENTS
+from framework.utils import set_seed
 
 
 def main() -> None:
