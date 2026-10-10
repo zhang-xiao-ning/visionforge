@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.base import Model
+from framework.interfaces import Model
 
 
 class PatchEmbedding(Model):

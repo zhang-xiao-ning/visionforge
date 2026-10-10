@@ -559,7 +559,7 @@ one file and no changes to the training loop:
    (e.g. `num_classes`, `vocab_size`), override `from_data`:
 
    ```python
-   from models.base import Model
+   from framework.interfaces import Model
 
    class MyModel(Model):
        @classmethod
@@ -611,23 +611,24 @@ one file and no changes to the training loop:
 Subclass `Task` and implement one method:
 
    ```python
-    from tasks.base import Task
+    from framework.interfaces import Task
 
-    class MyTask(Task):
-        def train_step(self, model, batch, device, dtype) -> torch.Tensor:
-            """Compute loss for one batch. Do NOT call backward."""
+
+class MyTask(Task):
+    def train_step(self, model, batch, device, dtype) -> torch.Tensor:
+        """Compute loss for one batch. Do NOT call backward."""
    ```
 
 Then register it in `src/registry.py`. `train.py` does not need to change.
 
 ### Adding a new metric
 
-1. Create `src/evaluation/<name>.py` with a `Metric` subclass:
+1. Create `src/evaluation/<name>.py` with a `Matric` subclass:
 
    ```python
-   from evaluation.base import Metric
+   from framework.interfaces import Matric
 
-   class MyMetric(Metric):
+   class MyMetric(Matric):
        name = "mymetric"
        higher_is_better = True
        run_every_n_epochs = 1        # 1 = every epoch, N = every N, None = test only

@@ -10,8 +10,7 @@ A Task bundles together the parts that differ between problem types
 Everything else (loop, optimizer, AMP, DDP) is task-agnostic.
 """
 
-from tasks.base import Task
 from tasks.captioning import CaptioningTask
 from tasks.classification import ClassificationTask
 
-__all__ = ["Task", "CaptioningTask", "ClassificationTask"]
+__all__ = ["CaptioningTask", "ClassificationTask"]

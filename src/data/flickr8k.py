@@ -22,8 +22,8 @@ from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from data.bundle import DataBundle, DataContext, EvalBundle
 from data.tokenizers import Tokenizer, build_tokenizer
+from framework.interfaces.bundle import DataBundle, DataContext, EvalBundle
 from runtime import use_cuda
 from training.strategy import TrainingStrategy
 from utils.path import DATASETS_PATH

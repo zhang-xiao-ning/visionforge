@@ -3,10 +3,10 @@
 import pytest
 from torch.utils.data import SubsetRandomSampler
 
-from data.bundle import DataContext
 from data.datasets import build_data
 from experiment.runner import ExperimentRunner
 from experiment.spec import TrainConfig
+from framework.interfaces.bundle import DataContext
 from training.strategy import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration

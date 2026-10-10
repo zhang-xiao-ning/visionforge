@@ -5,9 +5,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from data.bundle import DataBundle
 from experiment.runner import ExperimentRunner
 from experiment.spec import TrainConfig
+from framework.interfaces import DataBundle
 from training.strategy import SingleDeviceStrategy
 
 

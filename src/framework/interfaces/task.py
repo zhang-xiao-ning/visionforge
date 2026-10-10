@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 
 if TYPE_CHECKING:
-    from data.bundle import DataBundle
+    from framework.interfaces.bundle import DataBundle
 
 
 class Task(ABC):

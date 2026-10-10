@@ -24,7 +24,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 if TYPE_CHECKING:
-    from data.bundle import DataBundle, EvalBundle
+    from framework.interfaces.bundle import DataBundle, EvalBundle
 
 
 @contextmanager
@@ -45,7 +45,7 @@ def eval_mode(model: nn.Module) -> Iterator[None]:
             model.train()
 
 
-class Metric(ABC):
+class Matric(ABC):
     #: Name used as the key in metrics dicts / CSV columns.
     name: str
 

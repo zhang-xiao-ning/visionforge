@@ -2,8 +2,8 @@
 
 import pytest
 
-from data.bundle import DataContext
 from data.datasets import build_data
+from framework.interfaces.bundle import DataContext
 from models.captioning import CaptioningModel
 from training.strategy import SingleDeviceStrategy
 

@@ -4,8 +4,8 @@ from typing import cast
 import torchvision.datasets as dset
 from torch.utils.data import DataLoader, Dataset, Subset
 
-from data.bundle import DataBundle, DataContext
 from data.transforms import cifar10_test_transform, cifar10_train_transform
+from framework.interfaces.bundle import DataBundle, DataContext
 from runtime import NUM_TRAIN, use_cuda
 from utils.path import DATASETS_PATH
 

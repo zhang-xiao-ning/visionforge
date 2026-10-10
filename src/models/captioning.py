@@ -13,7 +13,7 @@ This is the simplest thing that works for captioning. Training is teacher-forced
 import torch
 import torch.nn as nn
 
-from models.base import Model
+from framework.interfaces import Model
 
 
 class ImageEncoder(Model):

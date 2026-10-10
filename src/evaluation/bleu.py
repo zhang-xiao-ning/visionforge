@@ -21,11 +21,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from data.tokenizers import build_tokenizer
-from evaluation.base import Metric, eval_mode
+from framework.interfaces import Matric, eval_mode
 
 if TYPE_CHECKING:
-    from data.bundle import DataBundle, EvalBundle
     from data.tokenizers import Tokenizer
+    from framework.interfaces import DataBundle, EvalBundle
 
 
 def _ngrams(tokens: list[str], n: int) -> Counter[tuple[str, ...]]:
@@ -89,7 +89,7 @@ def corpus_bleu(
     return score
 
 
-class BLEU4(Metric):
+class BLEU4(Matric):
     """Corpus BLEU-4 for image captioning.
 
     Runs only after training (too slow to run every epoch: generates a

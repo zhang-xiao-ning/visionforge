@@ -15,7 +15,7 @@ def test_registry_has_flickr8k() -> None:
 
 
 def test_unknown_dataset_raises() -> None:
-    from data.bundle import DataContext
+    from framework.interfaces.bundle import DataContext
 
     with pytest.raises(ValueError, match="Unknown dataset"):
         build_data("nope", DataContext(batch_size=4, strategy=SingleDeviceStrategy()))

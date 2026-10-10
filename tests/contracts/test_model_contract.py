@@ -2,7 +2,7 @@
 
 import pytest
 
-from models.base import Model
+from framework.interfaces import Model
 from registry import EXPERIMENTS
 
 

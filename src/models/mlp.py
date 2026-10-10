@@ -11,7 +11,7 @@ defaults apply, and so that contract tests pick it up automatically.
 import torch
 import torch.nn as nn
 
-from models.base import Model
+from framework.interfaces import Model
 
 
 class MLP(Model):

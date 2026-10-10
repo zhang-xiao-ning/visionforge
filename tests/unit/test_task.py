@@ -1,6 +1,6 @@
 """Tests for Task base class."""
 
-from tasks.base import Task
+from framework.interfaces import Task
 from tasks.captioning import CaptioningTask
 from tasks.classification import ClassificationTask
 

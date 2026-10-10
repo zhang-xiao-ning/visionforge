@@ -17,8 +17,8 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
+from framework.interfaces.task import Task
 from runtime import DTYPE
-from tasks.base import Task
 from training.hooks import EpochContext, StepContext, TrainHooks
 from training.strategy import TrainingStrategy
 

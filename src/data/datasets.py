@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from data import cifar10, flickr8k
-from data.bundle import DataBundle, DataContext, EvalBundle
+from framework.interfaces.bundle import DataBundle, DataContext, EvalBundle
 
 
 @dataclass(frozen=True)

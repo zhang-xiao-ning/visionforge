@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tasks.base import Task
+from framework.interfaces import Task
 
 
 class ClassificationTask(Task):

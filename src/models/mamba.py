@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.base import Model
+from framework.interfaces import Model
 
 
 class MambaBlock(nn.Module):

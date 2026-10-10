@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Self
 import torch.nn as nn
 
 if TYPE_CHECKING:
-    from data.bundle import DataBundle
+    from framework.interfaces.bundle import DataBundle
 
 
 class Model(nn.Module):
