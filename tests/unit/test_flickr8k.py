@@ -5,14 +5,14 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-from data.flickr8k import (
+from application.datasets.flickr8k import (
     Flickr8kDataset,
     _eval_transform,
     load_captions,
     load_split,
     make_collate_fn,
 )
-from data.tokenizers.char import CharTokenizer
+from application.datasets.tokenizers import CharTokenizer
 
 
 def _make_fixture(tmp_path: Path) -> tuple[Path, dict[str, list[str]]]:

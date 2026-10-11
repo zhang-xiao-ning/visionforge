@@ -2,8 +2,9 @@
 
 import pytest
 
-from data.datasets import build_data
+import application.registry  # noqa: F401 — populates DATASETS
 from framework.interfaces.bundle import DataContext
+from framework.registry import DATASETS
 from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
@@ -11,7 +12,7 @@ pytestmark = pytest.mark.integration
 
 def test_build_data_real(require_integration, require_cifar10) -> None:
     """Full pipeline: dataset files → DataBundle."""
-    bundle, eval_bundle = build_data(
+    bundle, eval_bundle = DATASETS.build(
         "cifar10",
         DataContext(batch_size=64, strategy=SingleDeviceStrategy()),
     )

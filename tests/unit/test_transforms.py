@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from data.transforms import (
+from application.datasets.transforms import (
     CIFAR10_MEAN,
     CIFAR10_STD,
     cifar10_test_transform,

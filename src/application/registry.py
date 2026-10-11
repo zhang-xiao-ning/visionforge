@@ -1,10 +1,10 @@
 """Registry of available experiments."""
 
+from application.datasets import cifar10, flickr8k
 from application.metrics import BLEU4
 from application.models import MLP, CaptioningModel, MambaClassifier, ViT
 from application.tasks.captioning import CaptioningTask
 from application.tasks.classification import ClassificationTask
-from data import cifar10, flickr8k
 from framework.experiment.spec import Experiment, TrainConfig
 from framework.metrics import Accuracy, CrossEntropy, Perplexity
 from framework.registry import DATASETS, EXPERIMENTS

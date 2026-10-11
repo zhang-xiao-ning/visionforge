@@ -18,12 +18,12 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from data.tokenizers import build_tokenizer
+from application.datasets.tokenizers import build_tokenizer
 from framework.interfaces import Metric, eval_mode
 from framework.metrics.bleu import corpus_bleu
 
 if TYPE_CHECKING:
-    from data.tokenizers import Tokenizer
+    from application.datasets import Tokenizer
     from framework.interfaces import DataBundle, EvalBundle
 
 

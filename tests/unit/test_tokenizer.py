@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from data.tokenizers import (
+from application.datasets.tokenizers import (
     CharTokenizer,
     TiktokenTokenizer,
     Tokenizer,

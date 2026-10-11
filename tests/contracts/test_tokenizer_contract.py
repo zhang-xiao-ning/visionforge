@@ -2,7 +2,7 @@
 
 import pytest
 
-from data.tokenizers import CharTokenizer, Tokenizer, build_tokenizer
+from application.datasets.tokenizers import CharTokenizer, Tokenizer, build_tokenizer
 
 _ROUNDTRIP_TEXT = "hello world"
 

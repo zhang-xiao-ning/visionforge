@@ -3,10 +3,11 @@
 import pytest
 from torch.utils.data import SubsetRandomSampler
 
-from data.datasets import build_data
+import application.registry  # noqa: F401 — populates DATASETS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import TrainConfig
 from framework.interfaces.bundle import DataContext
+from framework.registry import DATASETS
 from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
@@ -82,7 +83,7 @@ def test_flickr8k_train_loader_uses_strategy_sampler(require_flickr8k) -> None:
     """Regression: train loader must route through strategy.make_train_sampler."""
     from framework.training import SingleDeviceStrategy
 
-    bundle, _ = build_data(
+    bundle, _ = DATASETS.build(
         "flickr8k",
         DataContext(batch_size=4, strategy=SingleDeviceStrategy(), num_train=4),
     )

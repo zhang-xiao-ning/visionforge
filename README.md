@@ -588,10 +588,10 @@ one file and no changes to the training loop:
 
 ### Adding a new dataset
 
-1. Create `src/data/<name>.py` with a `build_bundle(ctx) -> (DataBundle, EvalBundle | None)`
+1. Create `src/application/datasets/<name>.py` with a `build_bundle(ctx) -> (DataBundle, EvalBundle | None)`
    function.
 
-2. Register it in `src/data/datasets.py`:
+2. Register it in `src/application/datasets/datasets.py`:
 
    ```python
    DATASET_REGISTRY = {

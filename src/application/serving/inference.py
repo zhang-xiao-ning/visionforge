@@ -6,7 +6,7 @@ import numpy as np
 import onnxruntime as ort
 from PIL import Image
 
-from data.transforms import cifar10_test_transform
+from application.datasets.transforms import cifar10_test_transform
 
 CIFAR10_CLASSES = [
     "airplane",

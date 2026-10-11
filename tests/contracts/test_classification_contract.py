@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from data.datasets import DatasetInfo
+from application.datasets.metadata import DatasetInfo
 
 
 def test_is_nn_module(classification_experiment_cls) -> None:

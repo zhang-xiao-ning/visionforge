@@ -13,8 +13,8 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-from data.flickr8k import _eval_transform
-from data.tokenizers import build_tokenizer
+from application.datasets.transforms import _eval_transform
+from application.datasets.tokenizers import build_tokenizer
 from application.models import CaptioningModel
 from framework.runtime import get_device
 

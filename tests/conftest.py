@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from data.datasets import DATASET_INFO, DatasetInfo
+from application.datasets.metadata import DATASET_INFO, DatasetInfo
 
 
 @pytest.fixture
