@@ -19,6 +19,14 @@ full local dev environment (ruff + mypy + pytest + pre-commit + CI).
 captioning, both intended as worked examples of the extension points
 above.
 
+**Architecture** — the code is split into two layers:
+
+- `src/framework/` — application-agnostic training engine.
+- `src/application/` — concrete models, datasets, tasks, and metrics.
+
+The framework never imports the application. Enforced by
+`tests/contracts/test_framework_boundary.py`.
+
 ---
 
 ## Requirements
@@ -91,8 +99,8 @@ make train EXP=vit EPOCHS=5
 make train EXP=captioning EPOCHS=5
 
 # Or directly
-uv run python src/main.py --experiment vit --epochs 5
-uv run python src/main.py --experiment captioning --epochs 5 --batch-size 32
+uv run python src/application/main.py --experiment vit --epochs 5
+uv run python src/application/main.py --experiment captioning --epochs 5 --batch-size 32
 ```
 
 ### YAML config
@@ -127,6 +135,7 @@ TrainConfig default < Experiment.config < YAML < CLI < stage.overrides
 ```
 
 Example configs live in `configs/`.
+
 ---
 
 ### Multi-stage training
@@ -213,6 +222,7 @@ make train CFG=configs/captioning-two-stage.yaml
 ```
 
 See `configs/` for ready-to-run examples.
+
 ---
 
 ### Common training options
@@ -297,7 +307,8 @@ USE_GPU=false make train EXP=vit EPOCHS=1   # force CPU
 
 ## Evaluation
 
-Metrics are first-class objects (`src/evaluation/`). Each metric
+Metrics are first-class objects (`src/framework/metrics/` for generic
+metrics, `src/application/metrics/` for task-specific ones). Each metric
 declares:
 
 - `name` — key in CSV / log
@@ -390,67 +401,44 @@ make board     # TensorBoard at http://localhost:6006
 ```text
 visionforge/
 ├── src/
-│   ├── __init__.py
+│   ├── __init__.py                 # __version__
 │   ├── py.typed
-│   ├── runtime.py              # constants + get_device() + USE_CUDA
-│   ├── registry.py             # EXPERIMENTS (name -> Experiment)
-│   ├── cli.py                  # argparse + YAML -> run parameters
-│   ├── main.py                 # entry point
-│   ├── data/
-│   │   ├── tokenizers/         # Tokenizer protocol + adapters + factory
-│   │   │   ├── base.py
-│   │   │   ├── char.py
-│   │   │   └── tiktoken_bpe.py
-│   │   ├── transforms.py
-│   │   ├── bundle.py           # DataBundle + EvalBundle + DataContext
-│   │   ├── cifar10.py
-│   │   ├── flickr8k.py         # pair-level + image-level datasets
-│   │   └── datasets.py         # registry: name -> (DataBundle, EvalBundle|None)
-│   ├── models/
-│   │   ├── base.py             # Model ABC
-│   │   ├── vit.py
-│   │   ├── mlp.py
-│   │   ├── mamba.py
-│   │   └── captioning.py
-│   ├── tasks/
-│   │   ├── base.py             # Task ABC (train_step only)
-│   │   ├── classification.py
-│   │   └── captioning.py
-│   ├── evaluation/             # first-class metrics
-│   │   ├── base.py             # Metric ABC + train_loader/test_loader
-│   │   ├── metrics.py          # Accuracy / CrossEntropy / Perplexity
-│   │   └── bleu.py             # corpus_bleu + BLEU4
-│   ├── training/
-│   │   ├── train.py
-│   │   ├── hooks.py
-│   │   ├── strategy.py         # SingleDevice / DDP
-│   │   └── tracker.py
-│   ├── experiment/
-│   │   ├── spec.py             # TrainConfig + Stage + Experiment
-│   │   ├── loader.py           # YAML load + validate + coerce
-│   │   ├── artifacts.py        # RunArtifacts
-│   │   └── runner.py           # ExperimentRunner
-│   ├── export/
-│   │   └── onnx_export.py
-│   ├── serving/
-│   │   ├── api.py
-│   │   ├── inference.py
-│   │   └── schema.py
-│   └── utils/
-│       ├── path.py
-│       ├── logger.py
-│       ├── seed.py
-│       └── env.py
+│   │
+│   ├── framework/                  # Training engine (application-agnostic)
+│   │   ├── __init__.py             #   public API re-export
+│   │   ├── runtime.py              #   constants + get_device() + use_cuda()
+│   │   ├── registry.py             #   ExperimentRegistry + DatasetRegistry
+│   │   ├── interfaces/             #   Task / Model / Metric / DataBundle
+│   │   ├── training/               #   train loop, hooks, strategy, tracker
+│   │   ├── metrics/                #   Accuracy / CrossEntropy / Perplexity / BLEU
+│   │   ├── experiment/             #   spec, loader, artifacts, runner
+│   │   └── utils/                  #   logger, path, seed, env
+│   │
+│   └── application/                # This project's choices
+│       ├── __init__.py
+│       ├── cli.py                  #   argparse + YAML -> RunParams
+│       ├── main.py                 #   entry point
+│       ├── registry.py             #   registers experiments + datasets
+│       ├── models/                 #   MLP / ViT / Mamba / CaptioningModel
+│       ├── datasets/               #   cifar10, flickr8k, transforms, tokenizers
+│       ├── tasks/                  #   ClassificationTask / CaptioningTask
+│       ├── metrics/                #   BLEU4 (task-specific)
+│       ├── export/                 #   ONNX export CLI
+│       └── serving/                #   FastAPI inference service
+│
 ├── tests/
-│   ├── conftest.py             # global fixtures
-│   ├── contracts/              # protocol contracts
-│   │   ├── conftest.py
+│   ├── conftest.py                 # global fixtures
+│   ├── fakes.py                    # shared fakes (TinyModel, TinyTask, ...)
+│   ├── contracts/                  # protocol + boundary contracts
+│   │   ├── test_framework_boundary.py     # framework must not import application
+│   │   ├── test_application_boundary.py   # no stale import paths
 │   │   ├── test_classification_contract.py
 │   │   ├── test_model_contract.py
 │   │   └── test_tokenizer_contract.py
-│   ├── unit/                   # fast, no IO
-│   └── integration/            # need real data + env flag
-├── configs/                    # example YAML experiment configs
+│   ├── unit/                       # fast, no IO
+│   └── integration/                # need real data + env flag
+│
+├── configs/                        # example YAML experiment configs
 ├── docker/
 │   ├── Dockerfile.serve
 │   └── Dockerfile.train
@@ -459,10 +447,10 @@ visionforge/
 │   ├── download_datasets.sh
 │   ├── sample_caption.py
 │   └── train_ddp.sh
-├── datasets/                   # (not in git)
-├── checkpoints/                # (not in git)
-├── outputs/                    # (not in git)
-├── exports/                    # (not in git)
+├── datasets/                       # (not in git)
+├── checkpoints/                    # (not in git)
+├── outputs/                        # (not in git)
+├── exports/                        # (not in git)
 ├── docker-compose.yml
 ├── .dockerignore
 ├── Makefile
@@ -530,8 +518,9 @@ macOS / Linux / CI.
 ### Testing layers
 
 - **`tests/unit/`** — fast, no real data, run by default
-- **`tests/contracts/`** — verify every implementation of a protocol
-  (all tokenizers, all classification models, all registered models)
+- **`tests/contracts/`** — protocol contracts (tokenizer, model) and
+  boundary contracts (framework must not import application; application
+  must not use stale import paths)
 - **`tests/integration/`** — need real data on disk + `RUN_INTEGRATION=1`
 
 ```bash
@@ -573,57 +562,63 @@ one file and no changes to the training loop:
 3. Register it in `src/application/registry.py`:
 
    ```python
-   EXPERIMENTS["my_model"] = Experiment(
-        model=MyModel,
-        task=ClassificationTask,
-        data="cifar10",
-        metrics=[Accuracy, CrossEntropy],
-        primary_metric="acc",
-        config=TrainConfig(learning_rate=1e-3),
-        category="classification",
-      )
+   from framework.registry import EXPERIMENTS
+   from framework.experiment.spec import Experiment, TrainConfig
+
+   EXPERIMENTS.register(
+       "my_model",
+       Experiment(
+           model=MyModel,
+           task=ClassificationTask,
+           data="cifar10",
+           metrics=[Accuracy, CrossEntropy],
+           primary_metric="acc",
+           config=TrainConfig(learning_rate=1e-3),
+           category="classification",
+       ),
+   )
    ```
 
 4. Contract tests (in `tests/contracts/`) automatically pick it up.
 
 ### Adding a new dataset
 
-1. Create `src/application/datasets/<name>.py` with a `build_bundle(ctx) -> (DataBundle, EvalBundle | None)`
+1. Create `src/application/datasets/<name>.py` with a
+   `build_bundle(ctx: DataContext) -> tuple[DataBundle, EvalBundle | None]`
    function.
 
-2. Register it in `src/application/datasets/datasets.py`:
+2. Register it in `src/application/registry.py`:
 
    ```python
-   DATASET_REGISTRY = {
-       "cifar10": cifar10.build_bundle,
-       "flickr8k": flickr8k.build_bundle,
-       "my_dataset": my_dataset.build_bundle,
-   }
+   from framework.registry import DATASETS
+
+   DATASETS.register("my_dataset", my_dataset.build_bundle)
    ```
 
    Return `(DataBundle(...), None)` if no separate evaluation loader is
    needed.
 
-3. Reference it from `src/application/registry.py`.
-
 ### Adding a new task
 
 Subclass `Task` and implement one method:
 
-   ```python
-    from framework.interfaces import Task
+```python
+from framework.interfaces import Task
 
 
 class MyTask(Task):
     def train_step(self, model, batch, device, dtype) -> torch.Tensor:
         """Compute loss for one batch. Do NOT call backward."""
-   ```
+```
 
-Then register it in `src/application/registry.py`. `train.py` does not need to change.
+Then register it in `src/application/registry.py` (inside the
+`Experiment(...)` you register). `train.py` does not need to change.
 
 ### Adding a new metric
 
-1. Create `src/evaluation/<name>.py` with a `Metric` subclass:
+1. Create `src/application/metrics/<name>.py` with a `Metric` subclass
+   (or `src/framework/metrics/` if the metric is generic and not tied
+   to a specific task):
 
    ```python
    from framework.interfaces import Metric
@@ -641,7 +636,8 @@ Then register it in `src/application/registry.py`. `train.py` does not need to c
            ...
    ```
 
-2. Add it to the experiment's `metrics` list in `src/application/registry.py`:
+2. Add it to the experiment's `metrics` list in
+   `src/application/registry.py`:
 
    ```python
    metrics=[Perplexity, BLEU4],
@@ -654,8 +650,8 @@ Then register it in `src/application/registry.py`. `train.py` does not need to c
 
 ### Adding a new training strategy (FSDP, DeepSpeed, ...)
 
-Subclass `TrainingStrategy` in `src/framework/training/strategy.py` and add a
-branch to `build_strategy()`. No other file needs to change.
+Subclass `TrainingStrategy` in `src/framework/training/strategy.py` and
+add a branch to `build_strategy()`. No other file needs to change.
 
 ---
 
