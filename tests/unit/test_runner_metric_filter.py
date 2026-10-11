@@ -3,36 +3,14 @@
 from pathlib import Path
 
 import pytest
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 
 import application.registry  # noqa: F401
 from application.registry import DATASETS, EXPERIMENTS
+from fakes import TinyModel, TinyTask, make_classification_builder
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, TrainConfig
-from framework.interfaces.bundle import DataBundle
 from framework.interfaces.metric import Metric
-from framework.interfaces.model import Model
-from framework.interfaces.task import Task
 from framework.training import SingleDeviceStrategy
-
-
-class _TinyModel(Model):
-    def __init__(self) -> None:
-        super().__init__()
-        self.fc = nn.Linear(4, 2)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.fc(x)
-
-
-class _TinyTask(Task):
-    def train_step(self, model, batch, device, dtype):
-        x, y = batch
-        x = x.to(device=device, dtype=dtype)
-        y = y.to(device=device, dtype=torch.long)
-        return nn.functional.cross_entropy(model(x), y)
 
 
 class _CountingBase(Metric):
@@ -69,32 +47,23 @@ def _reset_counters():
     yield
 
 
-def _fake_data_bundle(ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
-    x = torch.randn(8, 4)
-    y = torch.randint(0, 2, (8,))
-    loader = DataLoader(TensorDataset(x, y), batch_size=4)
-    return DataBundle(
-        loader_train=loader,
-        loader_val=loader,
-        loader_test=loader,
-        model_init={},
-        extras={},
-    ), None
-
-
 @pytest.fixture
 def setup(monkeypatch, tmp_path: Path):
     def make(metrics: list[type[Metric]], primary: str) -> ExperimentRunner:
         fake_exp = Experiment(
-            model=_TinyModel,
-            task=_TinyTask,
+            model=TinyModel,
+            task=TinyTask,
             data="fake",
             metrics=metrics,
             primary_metric=primary,
             category="classification",
         )
         monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-        monkeypatch.setitem(DATASETS, "fake", _fake_data_bundle)
+        monkeypatch.setitem(
+            DATASETS,
+            "fake",
+            make_classification_builder(shape=(4,), num_classes=2),
+        )
         return ExperimentRunner(
             experiment=EXPERIMENTS.get("fake_exp"),
             experiment_name="fake_exp",

@@ -5,12 +5,11 @@ from pathlib import Path
 import pytest
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
 
 import application.registry  # noqa: F401
+from fakes import make_classification_builder
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, Stage, TrainConfig
-from framework.interfaces.bundle import DataBundle
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
 from framework.metrics import CrossEntropy
@@ -45,19 +44,6 @@ class _MultiStageTask(Task):
         return nn.functional.cross_entropy(model(x), y)
 
 
-def _fake_data_bundle(ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
-    x = torch.randn(8, 4)
-    y = torch.randint(0, 2, (8,))
-    loader = DataLoader(TensorDataset(x, y), batch_size=4)
-    return DataBundle(
-        loader_train=loader,
-        loader_val=loader,
-        loader_test=loader,
-        model_init={},
-        extras={},
-    ), None
-
-
 _DEFAULT_STAGES = [
     Stage(name="phase1", freeze=["a"], overrides={"epochs": 1}),
     Stage(name="phase2", freeze=[], overrides={"epochs": 2}),
@@ -75,7 +61,11 @@ def patched_runner(monkeypatch, tmp_path: Path):
         category="classification",
     )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-    monkeypatch.setitem(DATASETS, "fake", _fake_data_bundle)
+    monkeypatch.setitem(
+        DATASETS,
+        "fake",
+        make_classification_builder(shape=(4,), num_classes=2, model_init={}),
+    )
 
     def make(stages=None) -> ExperimentRunner:
         return ExperimentRunner(

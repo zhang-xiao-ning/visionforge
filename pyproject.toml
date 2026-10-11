@@ -41,7 +41,7 @@ where = ["src"]
 
 # ---------- pytest ----------
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
 testpaths = ["tests"]
 addopts = "-ra -m 'not integration and not regression'"
 markers = [
