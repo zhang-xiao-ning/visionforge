@@ -4,9 +4,10 @@ from application.metrics import BLEU4
 from application.models import MLP, CaptioningModel, MambaClassifier, ViT
 from application.tasks.captioning import CaptioningTask
 from application.tasks.classification import ClassificationTask
+from data import cifar10, flickr8k
 from framework.experiment.spec import Experiment, TrainConfig
 from framework.metrics import Accuracy, CrossEntropy, Perplexity
-from framework.registry import EXPERIMENTS
+from framework.registry import DATASETS, EXPERIMENTS
 
 # Each entry is written out in full, even though the classification
 # entries share most fields. This is deliberate: the registry is a
@@ -15,6 +16,8 @@ from framework.registry import EXPERIMENTS
 # helper would force every future divergence (a different metric, a
 # different dataset) to flow through the helper's signature.
 
+DATASETS.register("cifar10", cifar10.build_bundle)
+DATASETS.register("flickr8k", flickr8k.build_bundle)
 
 EXPERIMENTS.register(
     "mlp",

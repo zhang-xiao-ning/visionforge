@@ -5,14 +5,15 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from application.registry import EXPERIMENTS
+import application.registry  # noqa: F401 — populates DATASETS
+from application.registry import DATASETS, EXPERIMENTS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import TrainConfig
 from framework.interfaces import DataBundle
 from framework.training import SingleDeviceStrategy
 
 
-def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
+def _fake_data_bundle(ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
     x = torch.randn(8, 3, 32, 32)
     y = torch.randint(0, 10, (8,))
     ds = TensorDataset(x, y)
@@ -27,7 +28,7 @@ def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG00
 
 
 def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setitem(DATASETS, "cifar10", _fake_data_bundle)
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],
@@ -47,7 +48,7 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
 
 
 def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setitem(DATASETS, "cifar10", _fake_data_bundle)
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],
@@ -66,11 +67,11 @@ def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
 def test_runner_passes_num_train_to_build_data(monkeypatch, tmp_path: Path) -> None:
     captured: dict[str, int | None] = {}
 
-    def fake_build_data(name: str, ctx):
+    def fake_build_data(ctx):
         captured["num_train"] = ctx.num_train
-        return _fake_data_bundle(name, ctx)
+        return _fake_data_bundle(ctx)
 
-    monkeypatch.setattr("framework.experiment.runner.build_data", fake_build_data)
+    monkeypatch.setitem(DATASETS, "cifar10", fake_build_data)  # ← 改这里
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],

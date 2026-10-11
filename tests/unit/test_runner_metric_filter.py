@@ -7,7 +7,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from application.registry import EXPERIMENTS
+import application.registry  # noqa: F401
+from application.registry import DATASETS, EXPERIMENTS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, TrainConfig
 from framework.interfaces.bundle import DataBundle
@@ -68,7 +69,7 @@ def _reset_counters():
     yield
 
 
-def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
+def _fake_data_bundle(ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
     x = torch.randn(8, 4)
     y = torch.randint(0, 2, (8,))
     loader = DataLoader(TensorDataset(x, y), batch_size=4)
@@ -93,7 +94,7 @@ def setup(monkeypatch, tmp_path: Path):
             category="classification",
         )
         monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-        monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
+        monkeypatch.setitem(DATASETS, "fake", _fake_data_bundle)
         return ExperimentRunner(
             experiment=EXPERIMENTS.get("fake_exp"),
             experiment_name="fake_exp",

@@ -8,10 +8,10 @@ import torch
 import torch.optim as optim
 from torch.optim import lr_scheduler
 
-from data.datasets import build_data
 from framework.experiment.artifacts import RunArtifacts
 from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces import DataContext, Metric
+from framework.registry import DATASETS
 from framework.runtime import DTYPE, PRINT_EVERY
 from framework.training.hooks import EpochContext, StepContext, TrainHooks
 from framework.training.strategy import TrainingStrategy, build_strategy
@@ -99,7 +99,7 @@ class ExperimentRunner:
             num_train=num_train,
             strategy=self.strategy,
         )
-        self.bundle, self.eval_bundle = build_data(self.dataset_name, ctx)
+        self.bundle, self.eval_bundle = DATASETS.build(self.dataset_name, ctx)
 
         raw_model = experiment.model.from_data(self.bundle)
         self.model = self.strategy.wrap_model(raw_model)

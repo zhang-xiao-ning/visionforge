@@ -7,13 +7,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+import application.registry  # noqa: F401
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces.bundle import DataBundle
 from framework.interfaces.model import Model
 from framework.interfaces.task import Task
 from framework.metrics import CrossEntropy
-from framework.registry import EXPERIMENTS
+from framework.registry import DATASETS, EXPERIMENTS
 from framework.training import SingleDeviceStrategy
 
 
@@ -44,7 +45,7 @@ class _MultiStageTask(Task):
         return nn.functional.cross_entropy(model(x), y)
 
 
-def _fake_data_bundle(name: str, ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
+def _fake_data_bundle(ctx) -> tuple[DataBundle, None]:  # noqa: ARG001
     x = torch.randn(8, 4)
     y = torch.randint(0, 2, (8,))
     loader = DataLoader(TensorDataset(x, y), batch_size=4)
@@ -74,7 +75,7 @@ def patched_runner(monkeypatch, tmp_path: Path):
         category="classification",
     )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
-    monkeypatch.setattr("framework.experiment.runner.build_data", _fake_data_bundle)
+    monkeypatch.setitem(DATASETS, "fake", _fake_data_bundle)
 
     def make(stages=None) -> ExperimentRunner:
         return ExperimentRunner(
