@@ -17,4 +17,4 @@ echo "Launching DDP: nproc_per_node=${NPROC}, master_port=${MASTER_PORT}"
 exec uv run torchrun \
     --nproc_per_node="${NPROC}" \
     --master_port="${MASTER_PORT}" \
-    src/main.py "$@"
+    src/application/main.py "$@"

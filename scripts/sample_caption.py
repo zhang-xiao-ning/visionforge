@@ -16,7 +16,7 @@ from PIL import Image
 from data.flickr8k import _eval_transform
 from data.tokenizers import build_tokenizer
 from application.models import CaptioningModel
-from framework.runtime import device
+from framework.runtime import get_device
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,6 +29,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    device = get_device()
 
     checkpoint_path = Path(args.checkpoint)
     image_path = Path(args.image)

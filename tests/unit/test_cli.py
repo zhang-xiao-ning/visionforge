@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from cli import build_run
+from application.cli import build_run
 
 
 def _ns(**kwargs) -> Namespace:

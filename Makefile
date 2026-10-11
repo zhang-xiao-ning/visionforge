@@ -108,7 +108,7 @@ TRAIN_ARGS = \
 	$(if $(CLIP),--grad-clip $(CLIP),)
 
 train:
-	uv run python src/main.py $(TRAIN_ARGS)
+	uv run python src/application/main.py $(TRAIN_ARGS)
 
 train-docker:
 	docker compose --profile train run --rm train $(TRAIN_ARGS)
@@ -118,7 +118,7 @@ train-ddp:
 
 # ---- Export / Serve ----
 export:
-	uv run python src/export/onnx_export.py \
+	uv run python src/application/export/onnx_export.py \
 		--experiment $(EXP) \
 		$(if $(CKPT),--checkpoint $(CKPT),) \
 		$(if $(OUT),--output $(OUT),) \
@@ -131,8 +131,7 @@ sample:
 		$(if $(MAXTOK),--max-new-tokens $(MAXTOK),)
 
 serve:
-	ONNX_PATH=$(ONNX) uv run uvicorn serving.api:app --host 0.0.0.0 --port $(PORT) --reload --app-dir src
-
+	ONNX_PATH=$(ONNX) uv run uvicorn application.serving.api:app --host 0.0.0.0 --port $(PORT) --reload --app-dir src
 board:
 	uv run tensorboard --logdir outputs/
 

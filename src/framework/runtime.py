@@ -8,7 +8,7 @@ import os
 
 import torch
 
-# ---- 纯常量（无副作用）----
+# ---- constant ----
 PRINT_EVERY = 100
 NUM_TRAIN = 49000
 BATCH_SIZE = 64
