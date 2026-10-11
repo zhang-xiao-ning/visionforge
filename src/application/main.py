@@ -1,7 +1,6 @@
 """Entry point for training."""
 
-from cli import build_run, parse_args
-
+from application.cli import build_run, parse_args
 from framework.experiment.runner import ExperimentRunner
 from framework.registry import EXPERIMENTS
 from framework.utils import set_seed
