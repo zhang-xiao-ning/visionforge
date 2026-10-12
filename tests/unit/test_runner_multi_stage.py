@@ -123,6 +123,22 @@ def test_multi_stage_broadcasts_after_restore(patched_runner, monkeypatch):
     assert calls["broadcast"] == 3
 
 
+def test_broadcast_model_covers_buffers():
+    """broadcast_model must cover both parameters and buffers."""
+    import torch.nn as nn
+
+    from framework.training import SingleDeviceStrategy
+
+    model = nn.BatchNorm1d(4)
+    # Single device: no-op. But we can at least assert it doesn't raise
+    # and doesn't touch the state.
+    before = {k: v.clone() for k, v in model.state_dict().items()}
+    SingleDeviceStrategy().broadcast_model(model)
+    after = model.state_dict()
+    for k in before:
+        assert torch.equal(before[k], after[k])
+
+
 def test_apply_freeze_unknown_group_raises(patched_runner) -> None:
     runner = patched_runner()
     with pytest.raises(ValueError, match="Unknown freeze groups"):

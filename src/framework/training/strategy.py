@@ -61,11 +61,13 @@ class TrainingStrategy:
         return True
 
     def broadcast_model(self, model: nn.Module) -> None:
-        """Bring all ranks' model parameters into agreement.
+        """Bring all ranks' parameters and buffers into agreement.
 
         Single device: no-op.
-        DDP: rank 0's parameters are broadcast to all ranks. Called after
-        `MetricTracker.restore()`, which only has data on rank 0.
+        DDP: rank 0's full state_dict is broadcast to all ranks. Called
+        after `MetricTracker.restore()`, which only has data on rank 0,
+        and covers both parameters (weight/bias) and buffers
+        (running_mean/running_var/num_batches_tracked).
         """
         return
 
@@ -161,8 +163,10 @@ class DDPStrategy(TrainingStrategy):
         return self.rank == 0
 
     def broadcast_model(self, model: nn.Module) -> None:
-        for p in model.parameters():
-            dist.broadcast(p.data, src=0)
+        # state_dict() yields references (not copies), so broadcasting
+        # in place writes back into the module's parameters and buffers.
+        for tensor in model.state_dict().values():
+            dist.broadcast(tensor, src=0)
 
     def on_epoch_start(self, epoch: int) -> None:
         if self._train_sampler is not None:
