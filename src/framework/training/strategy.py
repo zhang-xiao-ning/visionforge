@@ -154,6 +154,11 @@ class DDPStrategy(TrainingStrategy):
             return DDP(model, device_ids=[self.local_rank])
         return DDP(model)
 
+    def make_train_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
+        # One DistributedSampler per process; set_epoch() reshuffles each epoch.
+        self._train_sampler = DistributedSampler(dataset, shuffle=True)
+        return self._train_sampler
+
     def make_val_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
         # Validation runs only on rank 0 and must cover the FULL set,
         # so we do NOT use DistributedSampler here.
