@@ -51,7 +51,8 @@ _DEFAULT_STAGES = [
 
 
 @pytest.fixture
-def patched_runner(monkeypatch, tmp_path: Path):
+def fake_experiment(monkeypatch) -> None:
+    """Register a two-group fake experiment under 'fake_exp'."""
     fake_exp = Experiment(
         model=_TwoGroupModel,
         task=_MultiStageTask,
@@ -61,18 +62,23 @@ def patched_runner(monkeypatch, tmp_path: Path):
         category="classification",
     )
     monkeypatch.setitem(EXPERIMENTS, "fake_exp", fake_exp)
+
+
+@pytest.fixture
+def patched_runner(monkeypatch, tmp_path: Path, fake_experiment: None):
     monkeypatch.setitem(
         DATASETS,
         "fake",
         make_classification_builder(shape=(4,), num_classes=2, model_init={}),
     )
 
-    def make(stages=None) -> ExperimentRunner:
+    def make(stages=None, resume_path=None) -> ExperimentRunner:
         return ExperimentRunner(
             experiment=EXPERIMENTS["fake_exp"],
             experiment_name="fake_exp",
             config=TrainConfig(),
             stages=stages if stages is not None else _DEFAULT_STAGES,
+            resume_path=resume_path,
             strategy=SingleDeviceStrategy(),
             outputs_dir=tmp_path / "outputs",
             checkpoints_dir=tmp_path / "checkpoints",
@@ -97,11 +103,8 @@ def test_multi_stage_respects_stage_epochs(patched_runner) -> None:
 
 
 def test_multi_stage_resume_raises(patched_runner, tmp_path: Path) -> None:
-    runner = patched_runner()
-    runner.resume_path = str(tmp_path / "fake.pt")
     with pytest.raises(NotImplementedError, match="Resume is not supported"):
-        runner.run()
-    runner.cleanup()
+        patched_runner(resume_path=str(tmp_path / "fake.pt"))
 
 
 def test_multi_stage_broadcasts_after_restore(patched_runner, monkeypatch):
@@ -163,3 +166,26 @@ def test_apply_freeze_unfreeze_all(patched_runner) -> None:
     for p in runner.model.a.parameters():
         assert p.requires_grad is True
     runner.cleanup()
+
+
+def test_multi_stage_resume_fails_before_creating_dirs(
+    fake_experiment: None, tmp_path: Path
+) -> None:
+    """Resume+stages must fail before RunArtifacts.create makes dirs."""
+    outputs_dir = tmp_path / "outputs"
+    checkpoints_dir = tmp_path / "checkpoints"
+
+    with pytest.raises(NotImplementedError):
+        ExperimentRunner(
+            experiment=EXPERIMENTS["fake_exp"],
+            experiment_name="fake_exp",
+            config=TrainConfig(),
+            stages=_DEFAULT_STAGES,
+            resume_path=str(tmp_path / "fake.pt"),
+            strategy=SingleDeviceStrategy(),
+            outputs_dir=outputs_dir,
+            checkpoints_dir=checkpoints_dir,
+        )
+
+    assert not outputs_dir.exists()
+    assert not checkpoints_dir.exists()

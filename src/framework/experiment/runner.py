@@ -74,6 +74,13 @@ class ExperimentRunner:
         checkpoints_dir: Path | None = None,
         num_train: int | None = None,
     ) -> None:
+        # Fail fast: a run is either multi-stage or resumable, not both.
+        # Checked before any side effect (artifact dirs, checkpoint load).
+        if stages is not None and resume_path is not None:
+            raise NotImplementedError(
+                "Resume is not supported for multi-stage training. "
+                "Run from scratch, or resume a single-stage experiment."
+            )
         self.experiment_name = experiment_name
         self.cfg = config
         self.stages = stages
@@ -298,11 +305,6 @@ class ExperimentRunner:
 
     def _run_multi_stage(self) -> dict[str, float | int]:
         assert self.stages is not None
-        if self.resume_path is not None:
-            raise NotImplementedError(
-                "Resume is not supported for multi-stage training. "
-                "Run from scratch, or resume a single-stage experiment."
-            )
 
         stages = self.stages
         result: dict[str, float | int] = {}
