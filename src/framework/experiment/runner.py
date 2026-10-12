@@ -112,13 +112,13 @@ class ExperimentRunner:
         self.loader_val = self.bundle.loader_val
         self.loader_test = self.bundle.loader_test
 
-        self.optimizer = self._build_optimizer()
+        self.optimizer = self._build_optimizer(self.cfg)
         self.scheduler, self.scheduler_mode = _build_scheduler(
             self.optimizer, config, steps_per_epoch=len(self.loader_train)
         )
         self.start_epoch, self.best_acc = self._maybe_resume()
         self._validate_metrics()
-        self._tracker = self._build_tracker()
+        self._tracker = self._build_tracker(self.cfg)
 
     # ---------- construction ----------
     def _validate_metrics(self) -> None:
@@ -148,10 +148,10 @@ class ExperimentRunner:
             f"{[m.name for m in self.metrics]}"
         )
 
-    def _build_tracker(self) -> MetricTracker:
+    def _build_tracker(self, cfg: TrainConfig) -> MetricTracker:
         return MetricTracker(
             higher_is_better=self._primary_higher_is_better(),
-            patience=self.cfg.early_stop_patience,
+            patience=cfg.early_stop_patience,
             initial_best=self.best_acc if self.resume_path else None,
         )
 
@@ -207,22 +207,22 @@ class ExperimentRunner:
             result=result,
         )
 
-    def _build_optimizer(self) -> optim.Optimizer:
+    def _build_optimizer(self, cfg: TrainConfig) -> optim.Optimizer:
         params = [p for p in self.model.parameters() if p.requires_grad]
-        if self.cfg.optimizer == "adamw":
+        if cfg.optimizer == "adamw":
             return optim.AdamW(
                 params,
-                lr=self.cfg.learning_rate,
-                weight_decay=self.cfg.weight_decay,
+                lr=cfg.learning_rate,
+                weight_decay=cfg.weight_decay,
             )
-        if self.cfg.optimizer == "sgd":
+        if cfg.optimizer == "sgd":
             return optim.SGD(
                 params,
-                lr=self.cfg.learning_rate,
-                momentum=self.cfg.momentum,
-                nesterov=self.cfg.nesterov,
+                lr=cfg.learning_rate,
+                momentum=cfg.momentum,
+                nesterov=cfg.nesterov,
             )
-        raise ValueError(f"Unknown optimizer: {self.cfg.optimizer}")
+        raise ValueError(f"Unknown optimizer: {cfg.optimizer}")
 
     def _maybe_resume(self) -> tuple[int, float]:
         if self.resume_path is None:
@@ -299,15 +299,15 @@ class ExperimentRunner:
                 f"(freeze={stage.freeze}, overrides={stage.overrides})"
             )
 
-            self._apply_freeze(stage.freeze)
-            self.optimizer = self._build_optimizer()
-
             stage_cfg = dataclasses.replace(self.cfg, **stage.overrides)
+
+            self._apply_freeze(stage.freeze)
+            self.optimizer = self._build_optimizer(stage_cfg)
             self.scheduler, self.scheduler_mode = _build_scheduler(
                 self.optimizer, stage_cfg, steps_per_epoch=len(self.loader_train)
             )
+            self._tracker = self._build_tracker(stage_cfg)
 
-            self._tracker = self._build_tracker()
             hooks = self._build_hooks()
 
             result = train(
@@ -324,6 +324,9 @@ class ExperimentRunner:
                 start_epoch=1,
                 amp=self.amp,
             )
+
+            # NEW: restore best weights of this stage before moving to the next.
+            self._tracker.restore(self.model)
 
         return result
 
