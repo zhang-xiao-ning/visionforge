@@ -1,16 +1,16 @@
 FROM python:3.12-slim
 
-# 用清华源加速（国内构建）
+# Use Tsinghua mirror to speed up non-torch installs (China network)
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 WORKDIR /app
 
-# 先装 CPU 版 torch / torchvision（官方 CPU index）
+# CPU torch / torchvision from the official CPU index
 RUN pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
     torch==2.2.2 torchvision==0.17.2
 
-# 再装其它依赖（走清华源）
+# Other dependencies via the Tsinghua mirror
 RUN pip install --no-cache-dir \
     fastapi \
     "uvicorn[standard]" \
@@ -19,10 +19,10 @@ RUN pip install --no-cache-dir \
     "onnxruntime<1.20" \
     "numpy<2"
 
-# 复制代码
+# Copy source tree
 COPY src/ ./src/
 
-# exports/ 由 docker-compose 以 volume 挂载；standalone 运行时手动 -v
+# exports/ is mounted by docker-compose; for standalone runs use -v
 RUN mkdir -p /app/exports
 
 ENV PYTHONPATH=/app/src
@@ -30,4 +30,4 @@ ENV ONNX_PATH=/app/exports/mlp.onnx
 
 EXPOSE 8000
 
-CMD ["uvicorn", "application.serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "serving.api:app", "--host", "0.0.0.0", "--port", "8000"]
