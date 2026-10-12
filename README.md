@@ -159,8 +159,18 @@ stages:
     warmup_steps: 100
 ```
 
-Each stage runs sequentially, in order. There is no outer `epochs` when
-`stages` is present — each stage's `epochs` is its own length.
+Each stage runs sequentially, in order. When `stages` is present, the
+top-level `epochs` acts as the default for stages that don't specify
+their own. Each stage's `epochs` overrides it for that stage:
+
+    experiment: captioning
+    epochs: 3              # default for stages without their own
+    stages:
+      - name: align        # no epochs -> uses 3
+        freeze: [encoder]
+      - name: finetune
+        epochs: 5          # overrides -> uses 5
+        freeze: []
 
 **What each stage does**
 
