@@ -140,3 +140,13 @@ def test_generate_forces_eos_after_finish() -> None:
     # 样本 1: [BOS, 5, 5, 5]，永不结束
     assert out[0].tolist() == [1, eos_id, eos_id, eos_id]
     assert out[1].tolist() == [1, 5, 5, 5]
+
+
+def test_param_groups_exposes_encoder():
+    model = _make_model()
+    groups = model.param_groups()
+    assert set(groups.keys()) == {"encoder", "decoder"}
+    # every parameter appears exactly once
+    all_ids = [id(p) for ps in groups.values() for p in ps]
+    assert len(all_ids) == len(set(all_ids))
+    assert set(all_ids) == {id(p) for p in model.parameters()}

@@ -173,6 +173,24 @@ class CaptioningModel(Model):
         )
         return self.lm_head(out)  # (B, L, vocab_size)
 
+    def param_groups(self) -> dict[str, list[nn.Parameter]]:
+        """Named parameter groups for multi-stage training.
+
+        Groups:
+            - "encoder": the image encoder (patch embedding + transformer).
+            - "decoder": token embedding, positional embedding, transformer
+              decoder, and lm_head.
+
+        Uses parameter identity rather than module membership, because
+        with tie_weights=True, lm_head.weight IS token_embed.weight — a
+        module-based split would put the same tensor in two groups and
+        the optimizer would reject it.
+        """
+        encoder_params = list(self.encoder.parameters())
+        encoder_ids = {id(p) for p in encoder_params}
+        rest = [p for p in self.parameters() if id(p) not in encoder_ids]
+        return {"encoder": encoder_params, "decoder": rest}
+
     @torch.no_grad()
     def generate(
         self,

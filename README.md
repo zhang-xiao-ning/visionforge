@@ -183,12 +183,11 @@ class CaptioningModel(Model):
     def param_groups(self) -> dict[str, list[nn.Parameter]]:
         return {
             "encoder": list(self.encoder.parameters()),
-            "decoder": list(self.decoder.parameters()),
-            "lm_head": list(self.lm_head.parameters()),
+            "decoder": [p for p in self.parameters() if id(p) not in {id(q) for q in self.encoder.parameters()}],
         }
 ```
 
-Then `freeze: [encoder]` trains only the decoder and head.
+Then `freeze: [encoder]` trains only the decoder.
 
 **`overrides`: which fields are settable**
 
@@ -333,7 +332,7 @@ make export EXP=vit
 # exports/vit.onnx
 ```
 
-Verifies PyTorch vs ONNX output (max diff < 1e-5) as part of the export.
+Verifies PyTorch vs ONNX output (max diff < 1e-4) as part of the export.
 
 ### Generate a caption
 

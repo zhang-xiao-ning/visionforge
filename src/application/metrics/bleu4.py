@@ -66,7 +66,6 @@ class BLEU4(Metric):
         device: torch.device,
         dtype: torch.dtype,
     ) -> float:
-        model.eval()
         predictions: list[str] = []
         references: list[list[str]] = []
 
