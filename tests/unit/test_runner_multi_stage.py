@@ -104,6 +104,25 @@ def test_multi_stage_resume_raises(patched_runner, tmp_path: Path) -> None:
     runner.cleanup()
 
 
+def test_multi_stage_broadcasts_after_restore(patched_runner, monkeypatch):
+    """restore + broadcast_model must be called at each stage boundary."""
+    runner = patched_runner()
+    calls = {"broadcast": 0}
+    orig = runner.strategy.broadcast_model
+
+    def counting(model):
+        calls["broadcast"] += 1
+        return orig(model)
+
+    monkeypatch.setattr(runner.strategy, "broadcast_model", counting)
+
+    runner.run()
+    runner.cleanup()
+
+    # 2 stages in _DEFAULT_STAGES, plus once at end of run()
+    assert calls["broadcast"] == 3
+
+
 def test_apply_freeze_unknown_group_raises(patched_runner) -> None:
     runner = patched_runner()
     with pytest.raises(ValueError, match="Unknown freeze groups"):

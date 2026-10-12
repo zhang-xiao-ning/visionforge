@@ -273,6 +273,7 @@ class ExperimentRunner:
         else:
             result = self._run_multi_stage()
         self._tracker.restore(self.model)
+        self.strategy.broadcast_model(self.model)
         test_acc = self._evaluate_test()
         self._save_checkpoint(result)
 
@@ -337,8 +338,11 @@ class ExperimentRunner:
                 amp=self.amp,
             )
 
-            # NEW: restore best weights of this stage before moving to the next.
+            # rank 0 has best_state; other ranks have None. Restore on rank 0,
+            # then broadcast the parameters so all ranks agree before the next
+            # stage's allreduce.
             self._tracker.restore(self.model)
+            self.strategy.broadcast_model(self.model)
 
         return result
 

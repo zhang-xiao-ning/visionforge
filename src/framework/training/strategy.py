@@ -60,6 +60,15 @@ class TrainingStrategy:
         """
         return True
 
+    def broadcast_model(self, model: nn.Module) -> None:
+        """Bring all ranks' model parameters into agreement.
+
+        Single device: no-op.
+        DDP: rank 0's parameters are broadcast to all ranks. Called after
+        `MetricTracker.restore()`, which only has data on rank 0.
+        """
+        return
+
     def save(self, path: Path, payload: Any) -> None:
         """Save a checkpoint. Only the main process actually writes."""
         if self.is_main_process():
@@ -150,6 +159,10 @@ class DDPStrategy(TrainingStrategy):
 
     def is_main_process(self) -> bool:
         return self.rank == 0
+
+    def broadcast_model(self, model: nn.Module) -> None:
+        for p in model.parameters():
+            dist.broadcast(p.data, src=0)
 
     def on_epoch_start(self, epoch: int) -> None:
         if self._train_sampler is not None:
