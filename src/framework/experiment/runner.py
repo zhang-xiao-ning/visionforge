@@ -240,7 +240,7 @@ class ExperimentRunner:
         if self.resume_path is None:
             return 1, 0.0
 
-        ckpt = torch.load(self.resume_path, map_location="cpu")
+        ckpt = torch.load(self.resume_path, map_location="cpu", weights_only=False)
         _unwrap_model(self.model).load_state_dict(ckpt["model"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
         if self.scheduler is not None and ckpt.get("scheduler") is not None:

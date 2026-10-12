@@ -38,7 +38,7 @@ def main() -> None:
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    ckpt = torch.load(checkpoint_path, map_location=device)
+    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
     # Reconstruct tokenizer from checkpoint metadata
     tokenizer_name = ckpt["extras"]["tokenizer_name"]

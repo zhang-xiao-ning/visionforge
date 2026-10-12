@@ -29,7 +29,7 @@ def load_model(checkpoint_path: Path, model_cls: type[nn.Module]) -> nn.Module:
     `model_init` was saved by `ExperimentRunner._save_checkpoint` and
     contains exactly the kwargs needed to reconstruct the model.
     """
-    ckpt = torch.load(checkpoint_path, map_location="cpu")
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model = model_cls(**ckpt["model_init"])
     model.load_state_dict(ckpt["model"])
     model.eval()

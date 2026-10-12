@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     tensorboard \
     "numpy<2" \
-    pillow
+    pillow \
+    pyyaml \
+    tiktoken
 
 # 复制代码
 COPY src/ ./src/
