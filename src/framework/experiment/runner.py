@@ -158,12 +158,22 @@ class ExperimentRunner:
     def _build_hooks(self) -> TrainHooks:
         """Build hooks. This is the ONLY place that branches on rank."""
         if not self.strategy.is_main_process():
-            return TrainHooks(logger=self.artifacts.logger)
+            # Non-main ranks do no logging or evaluation. At epoch end
+            # they block until rank 0 broadcasts the stop decision,
+            # keeping early stopping in sync across ranks.
+            def wait_for_stop(_: EpochContext) -> bool:
+                return self.strategy.sync_stop(True)
+
+            return TrainHooks(
+                logger=self.artifacts.logger,
+                on_epoch_end=wait_for_stop,
+            )
 
         logger = self.artifacts.logger
         tracker = self._tracker
         metrics = self.metrics
         primary_metric = self.primary_metric
+        strategy = self.strategy
 
         def on_step(ctx: StepContext) -> None:
             if ctx.step % PRINT_EVERY == 0:
@@ -179,7 +189,7 @@ class ExperimentRunner:
                 m.name: m.evaluate(
                     ctx.model,
                     m.train_loader(self.bundle, self.eval_bundle),
-                    self.strategy.device,
+                    strategy.device,
                     DTYPE,
                 )
                 for m in active
@@ -191,7 +201,9 @@ class ExperimentRunner:
                 f"Epoch {ctx.epoch} done. avg_train_loss = {ctx.avg_loss:.4f}, {metrics_str}"
             )
             logger.record(ctx.epoch, ctx.avg_loss, val_metrics, primary_metric, ctx.lr)
-            return tracker.update(primary, ctx.model)
+            should_continue = tracker.update(primary, ctx.model)
+            # Broadcast the stop decision so all ranks break together.
+            return strategy.sync_stop(should_continue)
 
         def on_train_end() -> None:
             logger.info(f"Best {primary_metric} = {tracker.best:.4f}")

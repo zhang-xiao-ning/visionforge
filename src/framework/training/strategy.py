@@ -65,6 +65,17 @@ class TrainingStrategy:
         if self.is_main_process():
             torch.save(payload, path)
 
+    def sync_stop(self, stop: bool) -> bool:
+        """Return the stop flag that all ranks agree on.
+
+        Single device: return `stop` unchanged.
+        DDP: rank 0's value is broadcast to all ranks; the other ranks'
+        input values are ignored. This keeps early stopping in sync —
+        otherwise non-main ranks keep training after rank 0 breaks,
+        and the next allreduce hangs.
+        """
+        return stop
+
     def on_epoch_start(self, epoch: int) -> None:
         """Hook called at the start of every epoch."""
         return
@@ -132,12 +143,10 @@ class DDPStrategy(TrainingStrategy):
             return DDP(model, device_ids=[self.local_rank])
         return DDP(model)
 
-    def make_train_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
-        self._train_sampler = DistributedSampler(dataset, shuffle=True)
-        return self._train_sampler
-
     def make_val_sampler(self, dataset: Dataset[Any]) -> Sampler[Any]:
-        return DistributedSampler(dataset, shuffle=False)
+        # Validation runs only on rank 0 and must cover the FULL set,
+        # so we do NOT use DistributedSampler here.
+        return torch_sampler.SequentialSampler(cast(Sized, dataset))
 
     def is_main_process(self) -> bool:
         return self.rank == 0
@@ -145,6 +154,11 @@ class DDPStrategy(TrainingStrategy):
     def on_epoch_start(self, epoch: int) -> None:
         if self._train_sampler is not None:
             self._train_sampler.set_epoch(epoch)
+
+    def sync_stop(self, stop: bool) -> bool:
+        tensor = torch.tensor([int(stop)], device=self._device)
+        dist.broadcast(tensor, src=0)
+        return bool(tensor.item())
 
     def cleanup(self) -> None:
         if dist.is_initialized():
