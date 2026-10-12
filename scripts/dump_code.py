@@ -11,57 +11,88 @@ Usage:
 
 Profiles:
     default: src/ tests/
-    all:     src/ tests/ scripts/ docs/ docker/ .github/ + root config files
+    all:     src/ tests/ scripts/ docs/ docker/ configs/ .github/
+             + root config files
 """
 
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ---- 目录名命中即跳过（任意层级）----
-EXCLUDE_DIRS = {
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    ".git", ".venv", "venv", "node_modules",
-    "datasets", "checkpoints", "outputs", "exports",
-    "dist", "build", ".idea", ".vscode",
+# Directories excluded at any depth (caches, VCS, build artifacts).
+ALWAYS_EXCLUDE = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".git",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+    ".idea",
+    ".vscode",
 }
 
-# ---- 扩展名命中即收录 ----
+# Directories skipped only when passed as a top-level path (data / training
+# artifacts). A source subdirectory named "datasets" (e.g.
+# src/application/datasets/) must still be dumped.
+TOP_LEVEL_EXCLUDE = {"datasets", "checkpoints", "outputs", "exports"}
+
+# File extensions that are collected.
 WANTED_SUFFIXES = {
-    ".py", ".pyi", ".toml", ".cfg", ".ini",
-    ".yaml", ".yml", ".json", ".md", ".txt",
-    ".sh", ".sql",
+    ".py",
+    ".pyi",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".md",
+    ".txt",
+    ".sh",
+    ".sql",
 }
 
-# ---- 无扩展名但明确要收的文件 ----
+# Files without an extension that are still collected.
 WANTED_NAMES = {
-    "Makefile", "Dockerfile", "LICENSE", "NOTICE",
-    ".gitignore", ".dockerignore",
+    "Makefile",
+    "Dockerfile",
+    "LICENSE",
+    "NOTICE",
+    ".gitignore",
+    ".dockerignore",
 }
 
-# ---- 单文件硬上限，超过则 skip 并在输出中标注 ----
+# Hard limit per file. Larger files are skipped and noted in the output.
 MAX_FILE_BYTES = 1_000_000  # 1 MB
 
-# ---- 预置 profile ----
+# Preset path sets. Entries with '*' are expanded via glob at runtime.
 PROFILES: dict[str, list[str]] = {
     "default": ["src", "tests"],
     "all": [
-        # 目录
-        "src", "tests", "scripts", "docs", "docker", ".github",
-        # 根配置文件（缺失会被静默跳过）
-        "pyproject.toml", "Makefile", "docker-compose.yml",
-        "README.md", ".gitignore", ".dockerignore",
+        "src",
+        "tests",
+        "scripts",
+        "docker",
+        "configs",
+        ".github",
+        "pyproject.toml",
+        "Makefile",
+        "docker-compose.yml",
+        "README.md",
+        ".gitignore",
+        ".dockerignore",
         ".pre-commit-config.yaml",
     ],
 }
-
-
-def should_skip_dir(name: str) -> bool:
-    return name in EXCLUDE_DIRS or name.endswith(".egg-info")
 
 
 def is_wanted(p: Path) -> bool:
@@ -70,7 +101,6 @@ def is_wanted(p: Path) -> bool:
     name = p.name
     if name in WANTED_NAMES:
         return True
-    # Dockerfile.serve / Dockerfile.train / Dockerfile.dev ...
     if name.startswith("Dockerfile"):
         return True
     return False
@@ -82,17 +112,22 @@ def collect_files(paths: list[str]) -> list[Path]:
     for p_str in paths:
         p = Path(p_str)
         if not p.exists():
-            continue  # 缺失的路径静默跳过
+            continue
         if p.is_file():
             files.append(p)
             continue
+        if p.name in TOP_LEVEL_EXCLUDE:
+            continue
         for dirpath, dirnames, filenames in os.walk(p):
-            dirnames[:] = sorted(d for d in dirnames if not should_skip_dir(d))
+            dirnames[:] = sorted(
+                d
+                for d in dirnames
+                if d not in ALWAYS_EXCLUDE and not d.endswith(".egg-info")
+            )
             for fn in sorted(filenames):
                 fp = Path(dirpath) / fn
                 if is_wanted(fp):
                     files.append(fp)
-    # 去重 + 稳定排序
     return sorted(set(files), key=lambda x: str(x))
 
 
@@ -100,11 +135,14 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="*", help="Files or directories to dump.")
     parser.add_argument(
-        "--profile", choices=sorted(PROFILES.keys()), default=None,
+        "--profile",
+        choices=sorted(PROFILES.keys()),
+        default=None,
         help="Named path set. Overrides positional paths.",
     )
     parser.add_argument(
-        "--out", default="dump.txt",
+        "--out",
+        default="dump.txt",
         help="Output file (default: dump.txt).",
     )
     args = parser.parse_args(argv[1:])
@@ -145,7 +183,9 @@ def main(argv: list[str]) -> int:
                 out.write("=" * 64 + "\n\n")
                 continue
 
-            lines = content.count("\n") + (0 if content.endswith("\n") or not content else 1)
+            lines = content.count("\n") + (
+                0 if content.endswith("\n") or not content else 1
+            )
 
             out.write("=" * 64 + "\n")
             out.write(f"### FILE: {f}  ({lines} lines)\n")

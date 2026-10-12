@@ -7,7 +7,7 @@ import application.registry  # noqa: F401 — populates DATASETS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import TrainConfig
 from framework.interfaces.bundle import DataContext
-from framework.registry import DATASETS
+from framework.registry import DATASETS, EXPERIMENTS
 from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.integration
@@ -20,6 +20,7 @@ def test_runner_runs_one_epoch_on_real_data(
 ) -> None:
     """Full run: build data → train 1 epoch → save checkpoint."""
     runner = ExperimentRunner(
+        experiment=EXPERIMENTS["mlp"],
         experiment_name="mlp",
         config=TrainConfig(epochs=1, batch_size=64),
         strategy=SingleDeviceStrategy(),
@@ -48,6 +49,7 @@ def test_runner_saves_and_resumes(
     checkpoints_dir = tmp_path / "checkpoints"
 
     runner = ExperimentRunner(
+        experiment=EXPERIMENTS["mlp"],
         experiment_name="mlp",
         config=TrainConfig(epochs=1, batch_size=64),
         strategy=SingleDeviceStrategy(),
@@ -63,6 +65,7 @@ def test_runner_saves_and_resumes(
     assert ckpt.exists()
 
     runner2 = ExperimentRunner(
+        experiment=EXPERIMENTS["mlp"],
         experiment_name="mlp",
         config=TrainConfig(epochs=2, batch_size=64),
         strategy=SingleDeviceStrategy(),

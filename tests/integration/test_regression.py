@@ -33,6 +33,7 @@ def test_accuracy_above_baseline(
     exp = EXPERIMENTS[experiment]
     cfg = dataclasses.replace(exp.config, epochs=epochs)
     runner = ExperimentRunner(
+        experiment=exp,
         experiment_name=experiment,
         config=cfg,
         strategy=SingleDeviceStrategy(),
