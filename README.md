@@ -64,6 +64,8 @@ Expected under `datasets/cifar-10-batches-py/`.
 ```bash
 bash scripts/download_datasets.sh cifar10
 ```
+The last 1000 training images are held out as a fixed validation
+split, independent of --num-train.
 
 ### Flickr8k (for captioning)
 
@@ -219,10 +221,12 @@ Stages always win for the fields they set.
 
 **Resume is not supported for multi-stage runs**
 
-`--resume` raises `NotImplementedError` when `stages` is present. The
-checkpoint format tracks a single `(epoch, best_acc)` pair, which is
-ambiguous across stages. Run from scratch, or use a single-stage
-experiment if you need resume.
+`--resume` raises `NotImplementedError` at `ExperimentRunner`
+construction time when `stages` is present — before any output or
+checkpoint directories are created, and before the checkpoint is
+loaded. The checkpoint format tracks a single `(epoch, best_acc)`
+pair, which is ambiguous across stages. Run from scratch, or use a
+single-stage experiment if you need resume.
 
 **Example**
 
@@ -286,7 +290,7 @@ make train-docker EXP=vit EPOCHS=1
 | `--early-stop-patience` | Early stopping patience | `0` (disabled) |
 | `--resume` | Resume from checkpoint path | none |
 | `--amp` | Mixed precision (CUDA only) | off |
-| `--num-train` | Limit training samples | all |
+| `--num-train` | Cap the training pool; validation size is unchanged | all |
 | `--optimizer` | `sgd` / `adamw` | per-experiment default |
 | `--weight-decay` | Weight decay (AdamW) | per-experiment default |
 | `--warmup-steps` | Step-level LR warmup | per-experiment default |
