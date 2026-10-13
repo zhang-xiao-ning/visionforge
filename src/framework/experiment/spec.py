@@ -27,7 +27,7 @@ class TrainConfig:
     weight_decay: float = 0.0
 
     # ---- LR schedule ----
-    lr_scheduler: str = "none"
+    lr_scheduler: str = "const"
     step_size: int = 10
     gamma: float = 0.1
     warmup_steps: int = 0

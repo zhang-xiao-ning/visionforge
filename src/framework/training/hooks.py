@@ -53,7 +53,7 @@ def _empty_result() -> dict[str, float]:
 
 @dataclass
 class TrainHooks:
-    logger: AppLogger | None = None
+    logger: AppLogger
     on_step: Callable[[StepContext], None] = _noop_step
     on_epoch_end: Callable[[EpochContext], bool] = _noop_epoch_end
     on_train_end: Callable[[], None] = _noop_train_end

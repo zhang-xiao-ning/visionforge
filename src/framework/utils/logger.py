@@ -70,7 +70,7 @@ class AppLogger:
     def __init__(
         self,
         name: str,
-        log_file: Path,
+        log_file: Path | None = None,
         csv_path: Path | None = None,
         tb_dir: Path | None = None,
         csv_append: bool = False,
@@ -89,10 +89,10 @@ class AppLogger:
             "%(asctime)s [%(levelname)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
-
-        fh = logging.FileHandler(log_file, mode="w")
-        fh.setFormatter(fmt)
-        self._logger.addHandler(fh)
+        if log_file is not None:
+            fh = logging.FileHandler(log_file, mode="w")
+            fh.setFormatter(fmt)
+            self._logger.addHandler(fh)
 
         sh = logging.StreamHandler()
         sh.setFormatter(fmt)

@@ -8,8 +8,9 @@ from framework.experiment.spec import TrainConfig
 from framework.training import SingleDeviceStrategy, TrainHooks, train
 
 
-def _train(dummy_model, dummy_loader, epochs=1, **kwargs):
+def _train(dummy_model, dummy_loader, dummy_logger, epochs=1, **kwargs):
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.01)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
     cfg = TrainConfig(epochs=epochs)
     return train(
         dummy_model,
@@ -19,29 +20,30 @@ def _train(dummy_model, dummy_loader, epochs=1, **kwargs):
         ClassificationTask(),
         cfg,
         SingleDeviceStrategy(),
-        TrainHooks(),
+        TrainHooks(dummy_logger),
+        scheduler,
         **kwargs,
     )
 
 
-def test_train_runs_one_epoch(dummy_model, dummy_loader):
-    result = _train(dummy_model, dummy_loader, epochs=1)
+def test_train_runs_one_epoch(dummy_model, dummy_loader, dummy_logger):
+    result = _train(dummy_model, dummy_loader, dummy_logger, epochs=1)
     assert result["last_epoch"] == 1
 
 
-def test_train_updates_weights(dummy_model, dummy_loader):
+def test_train_updates_weights(dummy_model, dummy_loader, dummy_logger):
     w_before = dummy_model.fc.weight.detach().clone()
-    _train(dummy_model, dummy_loader, epochs=1)
+    _train(dummy_model, dummy_loader, dummy_logger, epochs=1)
     w_after = dummy_model.fc.weight.detach().clone()
     assert not torch.equal(w_before, w_after)
 
 
-def test_train_respects_epochs(dummy_model, dummy_loader):
-    result = _train(dummy_model, dummy_loader, epochs=3)
+def test_train_respects_epochs(dummy_model, dummy_loader, dummy_logger):
+    result = _train(dummy_model, dummy_loader, dummy_logger, epochs=3)
     assert result["last_epoch"] == 3
 
 
-def test_train_with_scheduler(dummy_model, dummy_loader):
+def test_train_with_scheduler(dummy_model, dummy_loader, dummy_logger):
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.1)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
     cfg = TrainConfig(epochs=2)
@@ -53,14 +55,15 @@ def test_train_with_scheduler(dummy_model, dummy_loader):
         ClassificationTask(),
         cfg,
         SingleDeviceStrategy(),
-        TrainHooks(),
+        TrainHooks(dummy_logger),
         scheduler=scheduler,
     )
     assert abs(optimizer.param_groups[0]["lr"] - 0.025) < 1e-9
 
 
-def test_train_stops_when_hook_returns_false(dummy_model, dummy_loader):
+def test_train_stops_when_hook_returns_false(dummy_model, dummy_loader, dummy_logger):
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.01)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
     cfg = TrainConfig(epochs=100)
     stop_after = 2
     count = {"n": 0}
@@ -77,12 +80,13 @@ def test_train_stops_when_hook_returns_false(dummy_model, dummy_loader):
         ClassificationTask(),
         cfg,
         SingleDeviceStrategy(),
-        TrainHooks(on_epoch_end=on_epoch_end),
+        TrainHooks(dummy_logger, on_epoch_end=on_epoch_end),
+        scheduler,
     )
     assert result["last_epoch"] == stop_after
 
 
-def test_train_on_epoch_end_receives_metrics(dummy_model, dummy_loader):
+def test_train_on_epoch_end_receives_metrics(dummy_model, dummy_loader, dummy_logger):
     """The hook gets a populated EpochContext."""
     captured = {}
 
@@ -92,9 +96,10 @@ def test_train_on_epoch_end_receives_metrics(dummy_model, dummy_loader):
         captured["lr"] = ctx.lr
         return True
 
-    _train(dummy_model, dummy_loader, epochs=2)
+    _train(dummy_model, dummy_loader, dummy_logger, epochs=2)
     # Run again with the real hook
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.01)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
     train(
         dummy_model,
         optimizer,
@@ -103,7 +108,8 @@ def test_train_on_epoch_end_receives_metrics(dummy_model, dummy_loader):
         ClassificationTask(),
         TrainConfig(epochs=2),
         SingleDeviceStrategy(),
-        TrainHooks(on_epoch_end=on_epoch_end),
+        TrainHooks(dummy_logger, on_epoch_end=on_epoch_end),
+        scheduler,
     )
     assert captured["epoch"] == 2
     assert captured["avg_loss"] > 0

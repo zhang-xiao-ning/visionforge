@@ -19,8 +19,7 @@ from torch.utils.data import DataLoader
 
 from framework.interfaces.task import Task
 from framework.runtime import DTYPE
-from framework.training.hooks import EpochContext, StepContext, TrainHooks
-from framework.training.strategy import TrainingStrategy
+from framework.training import EpochContext, StepContext, TrainHooks, TrainingStrategy
 
 
 @dataclass
@@ -45,7 +44,7 @@ def train(
     loop_cfg: LoopConfig,
     strategy: TrainingStrategy,
     hooks: TrainHooks,
-    scheduler: lr_scheduler.LRScheduler | None = None,
+    scheduler: lr_scheduler.LRScheduler,
     scheduler_mode: str = "epoch",
     start_epoch: int = 1,
     amp: bool = False,
@@ -55,8 +54,8 @@ def train(
     `model` must already be on the target device (ExperimentRunner wraps it).
     Side effects (logging, evaluation, checkpoint tracking) live in `hooks`.
     """
-    if hooks.logger is not None:
-        hooks.logger.flow(f"Enter function: train, rank: {strategy.rank}")
+
+    hooks.logger.info(f"Enter function: train, rank: {strategy.rank}")
     device = strategy.device
 
     # ---- one-time setup ----
@@ -66,8 +65,7 @@ def train(
 
     for e in range(start_epoch, loop_cfg.epochs + 1):
         strategy.on_epoch_start(e)
-        if hooks.logger is not None:
-            hooks.logger.flow(f"Epoch {e} start, rank: {strategy.rank}")
+        hooks.logger.info(f"Epoch {e} start, rank: {strategy.rank}")
 
         running_loss = 0.0
         n_batches = 0
@@ -89,7 +87,7 @@ def train(
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()
-                if scheduler is not None and scheduler_mode == "step":
+                if scheduler_mode == "step":
                     scheduler.step()
 
             unnormalized = loss.item() * loop_cfg.accum_steps
@@ -100,7 +98,7 @@ def train(
         avg_loss = running_loss / max(n_batches, 1)
         lr_now = optimizer.param_groups[0]["lr"]
 
-        if scheduler is not None and scheduler_mode == "epoch":
+        if scheduler_mode == "epoch":
             scheduler.step()
 
         ctx = EpochContext(
@@ -112,14 +110,12 @@ def train(
         )
         should_continue = hooks.on_epoch_end(ctx)
 
-        if hooks.logger is not None:
-            hooks.logger.flow(f"Epoch {e} end, rank: {strategy.rank}")
+        hooks.logger.flow(f"Epoch {e} end, rank: {strategy.rank}")
         last_epoch = e
         if not should_continue:
             break
 
     hooks.on_train_end()
-    if hooks.logger is not None:
-        hooks.logger.flow(f"Exit function: train, rank: {strategy.rank}")
+    hooks.logger.info(f"Exit function: train, rank: {strategy.rank}")
 
     return {"last_epoch": last_epoch, **hooks.result()}

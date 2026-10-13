@@ -28,7 +28,7 @@ def _build_scheduler(
     optimizer: optim.Optimizer,
     cfg: TrainConfig,
     steps_per_epoch: int,
-) -> tuple[lr_scheduler.LRScheduler | None, str]:
+) -> tuple[lr_scheduler.LRScheduler, str]:
     # Optimizer steps happen every `accum_steps` batches. Batches at the
     # tail that don't complete an accumulation window are dropped, matching
     # train.py's `(t + 1) % accum_steps == 0` condition.
@@ -52,12 +52,16 @@ def _build_scheduler(
             optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma),
             "epoch",
         )
-    if cfg.lr_scheduler == "cosine":
+    elif cfg.lr_scheduler == "cosine":
         return (
             optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs),
             "epoch",
         )
-    return None, "epoch"
+    elif cfg.lr_scheduler == "const":
+        # ConstantLR ≠ constant LR. Use a LambdaLR that always returns 1.0.
+        return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda _: 1.0), "epoch"
+    else:
+        raise ValueError(f"Unknown lr_scheduler: {cfg.lr_scheduler}")
 
 
 class ExperimentRunner:
