@@ -4,7 +4,7 @@
 
 .PHONY: help install install-hooks test test-integration test-regression \
         lint format check train train-docker train-ddp \
-        board export serve sample ci clean
+        board export serve sample ci dump clean
 
 # ---- Defaults ----
 EXP     ?= vit
@@ -30,6 +30,10 @@ WD      ?=
 WARMUP  ?=
 ACCUM   ?=
 CLIP    ?=
+
+# ---- Code dump ----
+PROFILE  ?= all
+DUMP_OUT ?= snapshots/dump.txt
 
 # ---- Help ----
 help:
@@ -57,6 +61,8 @@ help:
 	@echo "  make sample               generate caption for an image"
 	@echo "      CKPT=path/to.pt IMG=path/to.jpg [MAXTOK=32]"
 	@echo "  make ci                   run scripts/ci.sh"
+	@echo "  make dump                 dump source tree to dump.txt"
+	@echo "      PROFILE=all DUMP_OUT=snapshots/x.txt"
 	@echo "  make clean                remove caches"
 
 # ---- Install ----
@@ -134,6 +140,10 @@ serve:
 	ONNX_PATH=$(ONNX) uv run uvicorn application.serving.api:app --host 0.0.0.0 --port $(PORT) --reload --app-dir src
 board:
 	uv run tensorboard --logdir outputs/
+
+# ---- Code dump ----
+dump:
+	uv run python scripts/dump_code.py --profile $(PROFILE) --out $(DUMP_OUT)
 
 # ---- Clean ----
 clean:
