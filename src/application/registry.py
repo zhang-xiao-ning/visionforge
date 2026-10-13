@@ -1,9 +1,9 @@
-from application.datasets import cifar10, flickr8k
+from application.datasets import cifar10, flickr8k, tinyshakespeare
 from application.metrics import BLEU4
-from application.models import MLP, CaptioningModel, MambaClassifier, ViT
-from application.tasks import CaptioningTask, ClassificationTask
+from application.models import MLP, CaptioningModel, MambaClassifier, NanoGPT, ViT
+from application.tasks import CaptioningTask, ClassificationTask, LMTask
 from framework.experiment import Experiment, TrainConfig
-from framework.metrics import Accuracy, CrossEntropy, Perplexity
+from framework.metrics import Accuracy, CrossEntropy, Perplexity, TokenPerplexity
 from framework.registry import DATASETS, EXPERIMENTS
 
 # Each entry is written out in full, even though the classification
@@ -14,6 +14,7 @@ from framework.registry import DATASETS, EXPERIMENTS
 # different dataset) to flow through the helper's signature.
 DATASETS.register("cifar10", cifar10.build_bundle)
 DATASETS.register("flickr8k", flickr8k.build_bundle)
+DATASETS.register("tinyshakespeare", tinyshakespeare.build_bundle)
 
 EXPERIMENTS.register(
     Experiment(
@@ -61,5 +62,24 @@ EXPERIMENTS.register(
         primary_metric="perplexity",
         config=TrainConfig(learning_rate=1e-3),
         category="captioning",
+    ),
+)
+EXPERIMENTS.register(
+    Experiment(
+        name="nanogpt",
+        model=NanoGPT,
+        task=LMTask,
+        data="tinyshakespeare",
+        metrics=[TokenPerplexity],
+        primary_metric="perplexity",
+        config=TrainConfig(
+            optimizer="adamw",
+            learning_rate=3e-4,
+            batch_size=64,
+            weight_decay=0.1,
+            warmup_steps=100,
+            lr_scheduler="cosine",
+        ),
+        category="language_modeling",
     ),
 )
