@@ -4,8 +4,8 @@ import dataclasses
 
 import pytest
 
-from application.registry import EXPERIMENTS
 from framework.experiment.runner import ExperimentRunner
+from framework.registry import EXPERIMENTS
 from framework.training import SingleDeviceStrategy
 
 pytestmark = pytest.mark.regression
@@ -34,7 +34,6 @@ def test_accuracy_above_baseline(
     cfg = dataclasses.replace(exp.config, epochs=epochs)
     runner = ExperimentRunner(
         experiment=exp,
-        experiment_name=experiment,
         config=cfg,
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",

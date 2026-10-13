@@ -5,7 +5,6 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from application.registry import EXPERIMENTS
 from framework.experiment.loader import (
     coerce_overrides,
     load_yaml,
@@ -14,10 +13,11 @@ from framework.experiment.loader import (
     validate_override_keys,
 )
 from framework.experiment.spec import RunParams, Stage
+from framework.registry import EXPERIMENTS
 from framework.runtime import DEFAULT_EXPERIMENT
 
 
-def parse_args() -> argparse.Namespace:
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train visionforge models.")
     parser.add_argument(
         "--config",
@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-nesterov", action="store_true")
     parser.add_argument("--weight-decay", type=float, default=None)
     parser.add_argument(
-        "--lr-scheduler", type=str, default=None, choices=["none", "step", "cosine"]
+        "--lr-scheduler", type=str, default=None, choices=["const", "step", "cosine"]
     )
     parser.add_argument("--step-size", type=int, default=None)
     parser.add_argument("--gamma", type=float, default=None)
@@ -110,7 +110,7 @@ def _resolve_experiment_name(args: argparse.Namespace) -> tuple[str, dict[str, A
     return yaml_experiment, yaml_data
 
 
-def build_run(args: argparse.Namespace) -> RunParams:
+def build_run() -> RunParams:
     """Merge CLI + YAML + registry defaults into run parameters.
 
     Priority (low → high):
@@ -118,6 +118,7 @@ def build_run(args: argparse.Namespace) -> RunParams:
 
     Returns (experiment_name, config, seed, amp, num_train, stages).
     """
+    args = _parse_args()
     experiment_name, yaml_data = _resolve_experiment_name(args)
     experiment = EXPERIMENTS[experiment_name]
 
@@ -148,6 +149,7 @@ def build_run(args: argparse.Namespace) -> RunParams:
         config=config,
         seed=seed,
         amp=amp,
+        resume=args.resume,
         num_train=args.num_train,
         stages=stages,
     )

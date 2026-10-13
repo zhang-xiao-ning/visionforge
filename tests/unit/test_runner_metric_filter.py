@@ -4,12 +4,11 @@ from pathlib import Path
 
 import pytest
 
-import application.registry  # noqa: F401
-from application.registry import DATASETS, EXPERIMENTS
 from fakes import TinyModel, TinyTask, make_classification_builder
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, TrainConfig
 from framework.interfaces.metric import Metric
+from framework.registry import DATASETS, EXPERIMENTS
 from framework.training import SingleDeviceStrategy
 
 
@@ -51,6 +50,7 @@ def _reset_counters():
 def setup(monkeypatch, tmp_path: Path):
     def make(metrics: list[type[Metric]], primary: str) -> ExperimentRunner:
         fake_exp = Experiment(
+            name="fake_exp",
             model=TinyModel,
             task=TinyTask,
             data="fake",
@@ -66,7 +66,6 @@ def setup(monkeypatch, tmp_path: Path):
         )
         return ExperimentRunner(
             experiment=EXPERIMENTS.get("fake_exp"),
-            experiment_name="fake_exp",
             config=TrainConfig(epochs=3),
             strategy=SingleDeviceStrategy(),
             outputs_dir=tmp_path / "outputs",

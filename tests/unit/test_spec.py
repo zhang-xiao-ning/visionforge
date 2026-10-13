@@ -65,6 +65,7 @@ def test_stage_overrides_not_shared() -> None:
 def _exp(**kwargs) -> Experiment:
     """Experiment with sensible defaults for tests."""
     defaults = dict(
+        name="fake experiment",
         model=_Dummy,
         task=ClassificationTask,
         data="fake",

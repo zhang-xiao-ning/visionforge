@@ -274,28 +274,28 @@ make train-docker EXP=vit EPOCHS=1
 
 ### Full CLI argument list
 
-| Argument | Description | Default |
-|---|---|---|
-| `--config` | Path to a YAML config file | none |
-| `--experiment` | Experiment name (`vit` / `captioning`) | `vit` |
-| `--batch-size` | Batch size | per-experiment default |
-| `--epochs` | Number of epochs | per-experiment default |
-| `--learning-rate` | Learning rate | per-experiment default |
-| `--momentum` | SGD momentum | per-experiment default |
-| `--no-nesterov` | Disable Nesterov momentum | off |
-| `--seed` | Random seed | per-experiment default |
-| `--lr-scheduler` | `none` / `step` / `cosine` | per-experiment default |
-| `--step-size` | StepLR step size | per-experiment default |
-| `--gamma` | StepLR decay factor | per-experiment default |
-| `--early-stop-patience` | Early stopping patience | `0` (disabled) |
-| `--resume` | Resume from checkpoint path | none |
-| `--amp` | Mixed precision (CUDA only) | off |
+| Argument | Description                                         | Default |
+|---|-----------------------------------------------------|---|
+| `--config` | Path to a YAML config file                          | none |
+| `--experiment` | Experiment name (`vit` / `captioning`)              | `vit` |
+| `--batch-size` | Batch size                                          | per-experiment default |
+| `--epochs` | Number of epochs                                    | per-experiment default |
+| `--learning-rate` | Learning rate                                       | per-experiment default |
+| `--momentum` | SGD momentum                                        | per-experiment default |
+| `--no-nesterov` | Disable Nesterov momentum                           | off |
+| `--seed` | Random seed                                         | per-experiment default |
+| `--lr-scheduler` | `const` / `step` / `cosine`                         | per-experiment default |
+| `--step-size` | StepLR step size                                    | per-experiment default |
+| `--gamma` | StepLR decay factor                                 | per-experiment default |
+| `--early-stop-patience` | Early stopping patience                             | `0` (disabled) |
+| `--resume` | Resume from checkpoint path                         | none |
+| `--amp` | Mixed precision (CUDA only)                         | off |
 | `--num-train` | Cap the training pool; validation size is unchanged | all |
-| `--optimizer` | `sgd` / `adamw` | per-experiment default |
-| `--weight-decay` | Weight decay (AdamW) | per-experiment default |
-| `--warmup-steps` | Step-level LR warmup | per-experiment default |
-| `--accum-steps` | Gradient accumulation steps | per-experiment default |
-| `--grad-clip` | Gradient clipping norm | per-experiment default |
+| `--optimizer` | `sgd` / `adamw`                                     | per-experiment default |
+| `--weight-decay` | Weight decay (AdamW)                                | per-experiment default |
+| `--warmup-steps` | Step-level LR warmup                                | per-experiment default |
+| `--accum-steps` | Gradient accumulation steps                         | per-experiment default |
+| `--grad-clip` | Gradient clipping norm                              | per-experiment default |
 
 ### Environment variables
 

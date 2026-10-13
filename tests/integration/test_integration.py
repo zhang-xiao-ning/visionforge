@@ -3,7 +3,6 @@
 import pytest
 from torch.utils.data import SubsetRandomSampler
 
-import application.registry  # noqa: F401 — populates DATASETS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import TrainConfig
 from framework.interfaces.bundle import DataContext
@@ -21,7 +20,6 @@ def test_runner_runs_one_epoch_on_real_data(
     """Full run: build data → train 1 epoch → save checkpoint."""
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["mlp"],
-        experiment_name="mlp",
         config=TrainConfig(epochs=1, batch_size=64),
         strategy=SingleDeviceStrategy(),
         num_train=32,
@@ -50,7 +48,6 @@ def test_runner_saves_and_resumes(
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["mlp"],
-        experiment_name="mlp",
         config=TrainConfig(epochs=1, batch_size=64),
         strategy=SingleDeviceStrategy(),
         num_train=32,
@@ -66,7 +63,6 @@ def test_runner_saves_and_resumes(
 
     runner2 = ExperimentRunner(
         experiment=EXPERIMENTS["mlp"],
-        experiment_name="mlp",
         config=TrainConfig(epochs=2, batch_size=64),
         strategy=SingleDeviceStrategy(),
         num_train=32,

@@ -2,7 +2,6 @@
 
 import pytest
 
-import application.registry  # noqa: F401 — populates DATASETS
 from framework.interfaces.bundle import DataContext
 from framework.registry import DATASETS
 from framework.training import SingleDeviceStrategy

@@ -6,7 +6,6 @@ import pytest
 import torch
 import torch.nn as nn
 
-import application.registry  # noqa: F401
 from fakes import make_classification_builder
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, Stage, TrainConfig
@@ -54,6 +53,7 @@ _DEFAULT_STAGES = [
 def fake_experiment(monkeypatch) -> None:
     """Register a two-group fake experiment under 'fake_exp'."""
     fake_exp = Experiment(
+        name="fake_exp",
         model=_TwoGroupModel,
         task=_MultiStageTask,
         data="fake",
@@ -75,7 +75,6 @@ def patched_runner(monkeypatch, tmp_path: Path, fake_experiment: None):
     def make(stages=None, resume_path=None) -> ExperimentRunner:
         return ExperimentRunner(
             experiment=EXPERIMENTS["fake_exp"],
-            experiment_name="fake_exp",
             config=TrainConfig(),
             stages=stages if stages is not None else _DEFAULT_STAGES,
             resume_path=resume_path,
@@ -178,7 +177,6 @@ def test_multi_stage_resume_fails_before_creating_dirs(
     with pytest.raises(NotImplementedError):
         ExperimentRunner(
             experiment=EXPERIMENTS["fake_exp"],
-            experiment_name="fake_exp",
             config=TrainConfig(),
             stages=_DEFAULT_STAGES,
             resume_path=str(tmp_path / "fake.pt"),

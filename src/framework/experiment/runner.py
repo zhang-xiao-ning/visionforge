@@ -68,7 +68,6 @@ class ExperimentRunner:
     def __init__(
         self,
         experiment: Experiment,
-        experiment_name: str,
         config: TrainConfig,
         stages: list[Stage] | None = None,
         amp: bool = False,
@@ -85,7 +84,7 @@ class ExperimentRunner:
                 "Resume is not supported for multi-stage training. "
                 "Run from scratch, or resume a single-stage experiment."
             )
-        self.experiment_name = experiment_name
+        self.experiment_name = experiment.name
         self.cfg = config
         self.stages = stages
         self.amp = amp
@@ -96,7 +95,7 @@ class ExperimentRunner:
         self.primary_metric = experiment.primary_metric
 
         self.artifacts = RunArtifacts.create(
-            experiment_name=experiment_name,
+            experiment_name=self.experiment_name,
             dataset_name=self.dataset_name,
             config=config,
             strategy=self.strategy,

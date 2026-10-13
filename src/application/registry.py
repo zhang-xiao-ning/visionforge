@@ -1,11 +1,8 @@
-"""Registry of available experiments."""
-
 from application.datasets import cifar10, flickr8k
 from application.metrics import BLEU4
 from application.models import MLP, CaptioningModel, MambaClassifier, ViT
-from application.tasks.captioning import CaptioningTask
-from application.tasks.classification import ClassificationTask
-from framework.experiment.spec import Experiment, TrainConfig
+from application.tasks import CaptioningTask, ClassificationTask
+from framework.experiment import Experiment, TrainConfig
 from framework.metrics import Accuracy, CrossEntropy, Perplexity
 from framework.registry import DATASETS, EXPERIMENTS
 
@@ -15,13 +12,12 @@ from framework.registry import DATASETS, EXPERIMENTS
 # experiment self-contained and independently editable. Extracting a
 # helper would force every future divergence (a different metric, a
 # different dataset) to flow through the helper's signature.
-
 DATASETS.register("cifar10", cifar10.build_bundle)
 DATASETS.register("flickr8k", flickr8k.build_bundle)
 
 EXPERIMENTS.register(
-    "mlp",
     Experiment(
+        name="mlp",
         model=MLP,
         task=ClassificationTask,
         data="cifar10",
@@ -32,8 +28,8 @@ EXPERIMENTS.register(
     ),
 )
 EXPERIMENTS.register(
-    "vit",
     Experiment(
+        name="vit",
         model=ViT,
         task=ClassificationTask,
         data="cifar10",
@@ -44,8 +40,8 @@ EXPERIMENTS.register(
     ),
 )
 EXPERIMENTS.register(
-    "mamba",
     Experiment(
+        name="mamba",
         model=MambaClassifier,
         task=ClassificationTask,
         data="cifar10",
@@ -56,8 +52,8 @@ EXPERIMENTS.register(
     ),
 )
 EXPERIMENTS.register(
-    "captioning",
     Experiment(
+        name="captioning",
         model=CaptioningModel,
         task=CaptioningTask,
         data="flickr8k",

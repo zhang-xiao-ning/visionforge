@@ -2,10 +2,9 @@
 
 from pathlib import Path
 
-import application.registry  # noqa: F401 — populates DATASETS
-from application.registry import DATASETS, EXPERIMENTS
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import TrainConfig
+from framework.registry import DATASETS, EXPERIMENTS
 from framework.training import SingleDeviceStrategy
 from tests.fakes import make_classification_builder
 
@@ -15,7 +14,6 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],
-        experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -32,10 +30,8 @@ def test_runner_runs_one_epoch(monkeypatch, tmp_path: Path) -> None:
 
 def test_runner_saves_checkpoint(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setitem(DATASETS, "cifar10", make_classification_builder())
-
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],
-        experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",
@@ -60,7 +56,6 @@ def test_runner_passes_num_train_to_build_data(monkeypatch, tmp_path: Path) -> N
 
     runner = ExperimentRunner(
         experiment=EXPERIMENTS["vit"],
-        experiment_name="vit",
         config=TrainConfig(),
         strategy=SingleDeviceStrategy(),
         outputs_dir=tmp_path / "outputs",

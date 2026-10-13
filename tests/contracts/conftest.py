@@ -2,7 +2,6 @@
 
 import pytest
 
-import application.registry  # noqa: F401 — populates EXPERIMENTS
 from framework.registry import EXPERIMENTS
 
 _CLASSIFICATION_EXPERIMENTS = [

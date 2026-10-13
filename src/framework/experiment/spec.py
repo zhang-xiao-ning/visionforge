@@ -56,6 +56,7 @@ class Experiment:
     Stages are NOT here.
     """
 
+    name: str
     model: type[nn.Module]
     task: type[Task]
     data: str
@@ -75,5 +76,6 @@ class RunParams:
     config: TrainConfig
     seed: int
     amp: bool
+    resume: str | None
     num_train: int | None
     stages: list[Stage] | None

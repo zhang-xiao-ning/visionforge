@@ -13,13 +13,17 @@ class ExperimentRegistry(MutableMapping[str, Experiment]):
     def __init__(self) -> None:
         self._experiments: dict[str, Experiment] = {}
 
-    def register(self, name: str, experiment: Experiment) -> None:
-        self._experiments[name] = experiment
+    def register(self, experiment: Experiment) -> None:
+        if experiment.name in self._experiments:
+            raise ValueError(f"Duplicate experiment: {experiment.name}")
+        self._experiments[experiment.name] = experiment
 
     def __getitem__(self, name: str) -> Experiment:
         return self._experiments[name]
 
     def __setitem__(self, name: str, experiment: Experiment) -> None:
+        # Test-only path. Kept so `monkeypatch.setitem` works; the
+        # name-key consistency check is skipped here on purpose.
         self._experiments[name] = experiment
 
     def __delitem__(self, name: str) -> None:

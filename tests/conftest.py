@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+import application.registry  # noqa: F401 — triggers dataset/experiment registration
 from application.datasets.metadata import DATASET_INFO, DatasetInfo
 
 
@@ -46,7 +47,7 @@ def dummy_loader():
 @pytest.fixture
 def any_experiment() -> str:
     """Any experiment name for tests that don't care about the specific model."""
-    from application.registry import EXPERIMENTS
+    from framework.registry import EXPERIMENTS
 
     return next(iter(EXPERIMENTS))
 

@@ -2,7 +2,6 @@
 
 import pytest
 
-import application.registry  # noqa: F401 — populates DATASETS
 from application.datasets.cifar10 import VAL_SIZE, _train_val_indices
 from framework.registry import DATASETS
 from framework.training import SingleDeviceStrategy

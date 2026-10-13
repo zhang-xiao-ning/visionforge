@@ -1,23 +1,22 @@
 """Entry point for training."""
 
-from application.cli import build_run, parse_args
-from framework.experiment.runner import ExperimentRunner
+import application.registry  # noqa: F401 — triggers dataset/experiment registration
+from framework.cli import build_run
+from framework.experiment import ExperimentRunner
 from framework.registry import EXPERIMENTS
 from framework.utils import set_seed
 
 
 def main() -> None:
-    args = parse_args()
-    params = build_run(args)
+    params = build_run()
     set_seed(params.seed)
     experiment = EXPERIMENTS.get(params.experiment_name)
     runner = ExperimentRunner(
         experiment=experiment,
-        experiment_name=params.experiment_name,
         config=params.config,
         stages=params.stages,
         amp=params.amp,
-        resume_path=args.resume,
+        resume_path=params.resume,
         num_train=params.num_train,
     )
     try:
