@@ -14,6 +14,7 @@ from framework.experiment.artifacts import RunArtifacts
 from framework.experiment.loader import load_yaml, parse_stages
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, RunParams, Stage, TrainConfig
+from framework.inference import SamplingConfig, apply_sampling, sample
 
 # ---- Interfaces ----
 from framework.interfaces import (
@@ -108,4 +109,8 @@ __all__ = [
     "get_env_info",
     "get_logger",
     "set_seed",
+    # inference
+    "SamplingConfig",
+    "apply_sampling",
+    "sample",
 ]

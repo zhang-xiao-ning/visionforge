@@ -10,9 +10,9 @@ three things the framework needs in order to train a model generically:
 All three have defaults that are correct for the common case of
 "train everything from scratch". Models override only what they need.
 
-The base lives in `models/` (application), not in `framework/`. The
-framework operates on DataBundle and Task; it never needs to know what
-a Model *is*.
+The framework defines the Model *base*; concrete models live in
+`application/models/`. The framework operates on nn.Module and Task;
+it never needs to import a specific Model subclass.
 """
 
 from pathlib import Path

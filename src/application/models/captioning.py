@@ -13,6 +13,7 @@ This is the simplest thing that works for captioning. Training is teacher-forced
 import torch
 import torch.nn as nn
 
+from framework.inference import SamplingConfig, sample
 from framework.interfaces import Model
 
 
@@ -201,32 +202,18 @@ class CaptioningModel(Model):
     ) -> torch.Tensor:
         """Greedy autoregressive decode.
 
-        Args:
-            images: (B, 3, H, W)
-            bos_id: beginning-of-sequence token id
-            eos_id: end-of-sequence token id
-            max_new_tokens: maximum number of new tokens (excluding BOS)
-
-        Returns:
-            generated ids (B, T), T = 1 + number_of_decode_steps.
-            Samples that hit EOS early are filled with eos_id afterwards,
-            so `decode(skip_special=True)` yields the correct text.
+        Thin wrapper over `framework.inference.sample`. The image
+        conditioning is captured in the logits_fn closure; the decode
+        loop and EOS handling live in the framework.
         """
         B = images.size(0)
         device = images.device
-        generated = torch.full((B, 1), bos_id, dtype=torch.long, device=device)
-        finished = torch.zeros(B, dtype=torch.bool, device=device)
-
+        prompt = torch.full((B, 1), bos_id, dtype=torch.long, device=device)
         limit = min(max_new_tokens, self.max_len - 1)
-
-        for _ in range(limit):
-            logits = self.forward(images, generated)  # (B, L, V)
-            next_token = logits[:, -1, :].argmax(dim=-1, keepdim=True)  # (B, 1)
-
-            next_token = next_token.masked_fill(finished.unsqueeze(-1), eos_id)
-            generated = torch.cat([generated, next_token], dim=1)
-            finished = finished | (next_token.squeeze(-1) == eos_id)
-            if finished.all():
-                break
-
-        return generated
+        return sample(
+            lambda ids: self.forward(images, ids),
+            prompt,
+            max_new_tokens=limit,
+            eos_id=eos_id,
+            config=SamplingConfig(strategy="greedy"),
+        )
