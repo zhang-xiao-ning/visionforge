@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from framework.interfaces import Metric, eval_mode
-from framework.metrics import Accuracy, CrossEntropy, Perplexity
+from framework.metrics import Accuracy, CrossEntropy, Perplexity, TokenPerplexity
 
 
 class _DummyClassifier(nn.Module):
@@ -97,3 +97,29 @@ def test_metric_is_stateless(dummy_loader) -> None:
 def test_metrics_run_every_epoch_by_default() -> None:
     for cls in (Accuracy, CrossEntropy, Perplexity):
         assert cls.run_every_n_epochs == 1
+
+
+def test_token_perplexity_implements_protocol() -> None:
+    assert isinstance(TokenPerplexity(), Metric)
+
+
+def test_token_perplexity_metadata() -> None:
+    assert TokenPerplexity.name == "perplexity"
+    assert TokenPerplexity.higher_is_better is False
+    assert TokenPerplexity.run_every_n_epochs == 1
+
+
+def test_token_perplexity_positive() -> None:
+    class _LM(nn.Module):
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            B, L = x.shape
+            return torch.zeros(B, L, 10)
+
+    from torch.utils.data import DataLoader, TensorDataset
+
+    x = torch.randint(0, 10, (8, 4))
+    y = torch.randint(0, 10, (8, 4))
+    loader = DataLoader(TensorDataset(x, y), batch_size=4)
+
+    ppl = TokenPerplexity().evaluate(_LM(), loader, torch.device("cpu"), torch.float32)
+    assert ppl > 0

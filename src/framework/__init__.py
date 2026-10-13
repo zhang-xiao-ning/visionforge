@@ -28,7 +28,7 @@ from framework.interfaces import (
 )
 
 # ---- Metrics ----
-from framework.metrics import Accuracy, CrossEntropy, Perplexity, corpus_bleu
+from framework.metrics import Accuracy, CrossEntropy, Perplexity, TokenPerplexity, corpus_bleu
 
 # ---- Registry ----
 from framework.registry import DATASETS, EXPERIMENTS, DatasetRegistry, ExperimentRegistry
@@ -85,6 +85,7 @@ __all__ = [
     "Accuracy",
     "CrossEntropy",
     "Perplexity",
+    "TokenPerplexity",
     "corpus_bleu",
     # experiment
     "RunArtifacts",

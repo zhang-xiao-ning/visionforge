@@ -106,3 +106,34 @@ def test_factory_returns_char_by_name() -> None:
 def test_factory_unknown_name_raises() -> None:
     with pytest.raises(ValueError, match="Unknown tokenizer"):
         build_tokenizer("nope")
+
+
+def test_char_lower_false_preserves_case() -> None:
+    tok = CharTokenizer.build(["Hello World"], min_freq=1, lower=False)
+    upper = tok.encode("Hello", add_special=False)
+    lower = tok.encode("hello", add_special=False)
+    assert upper != lower
+
+
+def test_char_lower_default_still_lowercases() -> None:
+    tok = CharTokenizer.build(["Hello World"], min_freq=1)
+    assert tok.lower is True
+    # "Hello" and "hello" should encode identically when lower=True
+    assert tok.encode("Hello", add_special=False) == tok.encode("hello", add_special=False)
+
+
+def test_char_save_load_preserves_lower(tmp_path: Path) -> None:
+    tok = CharTokenizer.build(["ABC"], min_freq=1, lower=False)
+    path = tmp_path / "char.json"
+    tok.save(path)
+    tok2 = CharTokenizer.load(path)
+    assert tok2.lower is False
+    assert tok2.itos == tok.itos
+
+
+def test_char_load_legacy_save_defaults_to_lower(tmp_path: Path) -> None:
+    """An old save without a 'lower' key must load with lower=True."""
+    path = tmp_path / "legacy.json"
+    path.write_text('{"itos": ["<pad>", "<bos>", "<eos>", "<unk>", "a"]}')
+    tok = CharTokenizer.load(path)
+    assert tok.lower is True
