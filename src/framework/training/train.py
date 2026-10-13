@@ -87,6 +87,7 @@ def train(
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()
+                task.step_end(model)
                 if scheduler_mode == "step":
                     scheduler.step()
 

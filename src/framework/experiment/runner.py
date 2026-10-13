@@ -114,6 +114,7 @@ class ExperimentRunner:
         raw_model = experiment.model.from_data(self.bundle)
         self.model = self.strategy.wrap_model(raw_model)
         self.task = experiment.task.from_data(self.bundle)
+        self.task.attach(self.model, self.strategy.device)
         self.metrics: list[Metric] = [
             m.from_data(self.bundle, self.eval_bundle) for m in experiment.metrics
         ]
@@ -230,20 +231,30 @@ class ExperimentRunner:
         )
 
     def _build_optimizer(self, cfg: TrainConfig) -> optim.Optimizer:
-        params = [p for p in self.model.parameters() if p.requires_grad]
+        model = _unwrap_model(self.model)
+        groups = model.param_groups()
+
+        unknown = set(cfg.lr_per_group) - set(groups.keys())
+        if unknown:
+            raise ValueError(
+                f"Unknown lr_per_group keys: {sorted(unknown)}. Available: {sorted(groups.keys())}"
+            )
+
+        param_groups: list[dict] = []
+        for name, params in groups.items():
+            trainable = [p for p in params if p.requires_grad]
+            if not trainable:
+                continue
+            lr = cfg.lr_per_group.get(name, cfg.learning_rate)
+            param_groups.append({"params": trainable, "lr": lr})
+
+        if not param_groups:
+            raise ValueError("No trainable parameters — every group is frozen")
+
         if cfg.optimizer == "adamw":
-            return optim.AdamW(
-                params,
-                lr=cfg.learning_rate,
-                weight_decay=cfg.weight_decay,
-            )
+            return optim.AdamW(param_groups, weight_decay=cfg.weight_decay)
         if cfg.optimizer == "sgd":
-            return optim.SGD(
-                params,
-                lr=cfg.learning_rate,
-                momentum=cfg.momentum,
-                nesterov=cfg.nesterov,
-            )
+            return optim.SGD(param_groups, momentum=cfg.momentum, nesterov=cfg.nesterov)
         raise ValueError(f"Unknown optimizer: {cfg.optimizer}")
 
     def _maybe_resume(self) -> tuple[int, float]:
@@ -255,6 +266,8 @@ class ExperimentRunner:
         self.optimizer.load_state_dict(ckpt["optimizer"])
         if self.scheduler is not None and ckpt.get("scheduler") is not None:
             self.scheduler.load_state_dict(ckpt["scheduler"])
+        if ckpt.get("task") is not None:
+            self.task.load_state_dict(ckpt["task"])
 
         start_epoch = ckpt["epoch"] + 1
         best_acc = ckpt["best_acc"]
@@ -409,7 +422,8 @@ class ExperimentRunner:
             {
                 "model": _unwrap_model(self.model).state_dict(),
                 "optimizer": self.optimizer.state_dict(),
-                "scheduler": (self.scheduler.state_dict() if self.scheduler is not None else None),
+                "scheduler": self.scheduler.state_dict(),
+                "task": self.task.state_dict(),
                 "epoch": result["last_epoch"],
                 "best_acc": result["best_acc"],
                 "config": dataclasses.asdict(self.cfg),

@@ -61,3 +61,29 @@ class TinyTask(Task):
         x = x.to(device=device, dtype=dtype)
         y = y.to(device=device, dtype=torch.long)
         return nn.functional.cross_entropy(model(x), y)
+
+
+class TrackableTask(Task):
+    """Task that records lifecycle calls for runner / trainer tests."""
+
+    def __init__(self) -> None:
+        self.attach_calls: list[torch.device] = []
+        self.step_end_calls = 0
+
+    def attach(self, model: nn.Module, device: torch.device) -> None:
+        self.attach_calls.append(device)
+
+    def train_step(self, model, batch, device, dtype):
+        x, y = batch
+        x = x.to(device=device, dtype=dtype)
+        y = y.to(device=device, dtype=torch.long)
+        return nn.functional.cross_entropy(model(x), y)
+
+    def step_end(self, model: nn.Module) -> None:
+        self.step_end_calls += 1
+
+    def state_dict(self) -> dict:
+        return {"step_end_calls": self.step_end_calls}
+
+    def load_state_dict(self, state: dict) -> None:
+        self.step_end_calls = state.get("step_end_calls", 0)

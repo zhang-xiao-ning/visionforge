@@ -22,6 +22,7 @@ class TrainConfig:
     # ---- optimizer ----
     optimizer: str = "sgd"
     learning_rate: float = 1e-2
+    lr_per_group: dict[str, float] = field(default_factory=dict)
     momentum: float = 0.9
     nesterov: bool = True
     weight_decay: float = 0.0

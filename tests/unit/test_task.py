@@ -1,5 +1,8 @@
 """Tests for Task base class."""
 
+import torch
+import torch.nn as nn
+
 from application.tasks import ClassificationTask
 from application.tasks.captioning import CaptioningTask
 from framework.interfaces import Task
@@ -29,3 +32,21 @@ def test_task_has_no_primary_metric() -> None:
 
 def test_task_has_no_higher_is_better() -> None:
     assert not hasattr(Task, "higher_is_better")
+
+
+def test_attach_default_is_noop() -> None:
+    task = ClassificationTask()
+    task.attach(nn.Linear(4, 2), torch.device("cpu"))
+
+
+def test_step_end_default_is_noop() -> None:
+    task = ClassificationTask()
+    task.step_end(nn.Linear(4, 2))
+
+
+def test_state_dict_default_is_empty() -> None:
+    assert ClassificationTask().state_dict() == {}
+
+
+def test_load_state_dict_default_is_noop() -> None:
+    ClassificationTask().load_state_dict({"anything": 1})
