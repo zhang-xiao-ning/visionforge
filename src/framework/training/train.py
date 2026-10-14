@@ -45,7 +45,6 @@ def train(
     strategy: TrainingStrategy,
     hooks: TrainHooks,
     scheduler: lr_scheduler.LRScheduler,
-    scheduler_mode: str = "epoch",
     start_epoch: int = 1,
     amp: bool = False,
 ) -> dict[str, float | int]:
@@ -88,8 +87,7 @@ def train(
                 scaler.update()
                 optimizer.zero_grad()
                 task.step_end(model)
-                if scheduler_mode == "step":
-                    scheduler.step()
+                scheduler.step()
 
             unnormalized = loss.item() * loop_cfg.accum_steps
             running_loss += unnormalized
@@ -98,9 +96,6 @@ def train(
 
         avg_loss = running_loss / max(n_batches, 1)
         lr_now = optimizer.param_groups[0]["lr"]
-
-        if scheduler_mode == "epoch":
-            scheduler.step()
 
         ctx = EpochContext(
             epoch=e,

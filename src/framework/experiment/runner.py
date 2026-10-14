@@ -1,14 +1,13 @@
 """ExperimentRunner: orchestrates a single training run."""
 
 import dataclasses
-import math
 from pathlib import Path
 
 import torch
 import torch.optim as optim
-from torch.optim import lr_scheduler
 
 from framework.experiment.artifacts import RunArtifacts
+from framework.experiment.scheduler import build_scheduler
 from framework.experiment.spec import Experiment, Stage, TrainConfig
 from framework.interfaces import DataContext, Metric
 from framework.registry import DATASETS
@@ -22,46 +21,6 @@ from framework.utils.env import format_env_info
 
 def _unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
     return model.module if hasattr(model, "module") else model
-
-
-def _build_scheduler(
-    optimizer: optim.Optimizer,
-    cfg: TrainConfig,
-    steps_per_epoch: int,
-) -> tuple[lr_scheduler.LRScheduler, str]:
-    # Optimizer steps happen every `accum_steps` batches. Batches at the
-    # tail that don't complete an accumulation window are dropped, matching
-    # train.py's `(t + 1) % accum_steps == 0` condition.
-    opt_steps_per_epoch = max(1, steps_per_epoch // cfg.accum_steps)
-    total_steps = cfg.epochs * opt_steps_per_epoch
-
-    if cfg.warmup_steps > 0:
-
-        def lr_lambda(step: int) -> float:
-            if step < cfg.warmup_steps:
-                return step / max(1, cfg.warmup_steps)
-            if cfg.lr_scheduler == "cosine":
-                progress = (step - cfg.warmup_steps) / max(1, total_steps - cfg.warmup_steps)
-                return max(0.0, 0.5 * (1.0 + math.cos(math.pi * progress)))
-            return 1.0
-
-        return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda), "step"
-
-    if cfg.lr_scheduler == "step":
-        return (
-            optim.lr_scheduler.StepLR(optimizer, step_size=cfg.step_size, gamma=cfg.gamma),
-            "epoch",
-        )
-    elif cfg.lr_scheduler == "cosine":
-        return (
-            optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs),
-            "epoch",
-        )
-    elif cfg.lr_scheduler == "const":
-        # ConstantLR ≠ constant LR. Use a LambdaLR that always returns 1.0.
-        return optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda _: 1.0), "epoch"
-    else:
-        raise ValueError(f"Unknown lr_scheduler: {cfg.lr_scheduler}")
 
 
 class ExperimentRunner:
@@ -124,7 +83,7 @@ class ExperimentRunner:
         self.loader_test = self.bundle.loader_test
 
         self.optimizer = self._build_optimizer(self.cfg)
-        self.scheduler, self.scheduler_mode = _build_scheduler(
+        self.scheduler = build_scheduler(
             self.optimizer, config, steps_per_epoch=len(self.loader_train)
         )
         self.start_epoch, self.best_acc = self._maybe_resume()
@@ -264,7 +223,7 @@ class ExperimentRunner:
         ckpt = torch.load(self.resume_path, map_location="cpu", weights_only=False)
         _unwrap_model(self.model).load_state_dict(ckpt["model"])
         self.optimizer.load_state_dict(ckpt["optimizer"])
-        if self.scheduler is not None and ckpt.get("scheduler") is not None:
+        if ckpt.get("scheduler") is not None:
             self.scheduler.load_state_dict(ckpt["scheduler"])
         if ckpt.get("task") is not None:
             self.task.load_state_dict(ckpt["task"])
@@ -314,7 +273,6 @@ class ExperimentRunner:
             self.strategy,
             hooks,
             scheduler=self.scheduler,
-            scheduler_mode=self.scheduler_mode,
             start_epoch=self.start_epoch,
             amp=self.amp,
         )
@@ -334,7 +292,7 @@ class ExperimentRunner:
 
             self._apply_freeze(stage.freeze)
             self.optimizer = self._build_optimizer(stage_cfg)
-            self.scheduler, self.scheduler_mode = _build_scheduler(
+            self.scheduler = build_scheduler(
                 self.optimizer, stage_cfg, steps_per_epoch=len(self.loader_train)
             )
             self._tracker = self._build_tracker(stage_cfg)
@@ -351,7 +309,6 @@ class ExperimentRunner:
                 self.strategy,
                 hooks,
                 scheduler=self.scheduler,
-                scheduler_mode=self.scheduler_mode,
                 start_epoch=1,
                 amp=self.amp,
             )

@@ -44,6 +44,11 @@ def test_train_respects_epochs(dummy_model, dummy_loader, dummy_logger):
 
 
 def test_train_with_scheduler(dummy_model, dummy_loader, dummy_logger):
+    """StepLR now steps once per optimizer step (was: once per epoch).
+
+    4 batches/epoch, 2 epochs -> 8 optimizer steps. Starting at 0.1,
+    gamma=0.5, step_size=1 -> 0.1 * 0.5**8.
+    """
     optimizer = optim.SGD(dummy_model.parameters(), lr=0.1)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
     cfg = TrainConfig(epochs=2)
@@ -58,7 +63,7 @@ def test_train_with_scheduler(dummy_model, dummy_loader, dummy_logger):
         TrainHooks(dummy_logger),
         scheduler=scheduler,
     )
-    assert abs(optimizer.param_groups[0]["lr"] - 0.025) < 1e-9
+    assert abs(optimizer.param_groups[0]["lr"] - 0.1 * 0.5**8) < 1e-9
 
 
 def test_train_stops_when_hook_returns_false(dummy_model, dummy_loader, dummy_logger):
@@ -114,3 +119,26 @@ def test_train_on_epoch_end_receives_metrics(dummy_model, dummy_loader, dummy_lo
     assert captured["epoch"] == 2
     assert captured["avg_loss"] > 0
     assert captured["lr"] > 0
+
+
+def test_train_steps_scheduler_once_per_optimizer_step(dummy_model, dummy_loader, dummy_logger):
+    """Regression: scheduler.step() must fire exactly once per optimizer
+    step, not additionally at epoch boundaries."""
+    optimizer = optim.SGD(dummy_model.parameters(), lr=1.0)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda step: 0.5**step)
+
+    # 4 batches, accum_steps=1 → 4 optimizer steps, 1 epoch
+    train(
+        dummy_model,
+        optimizer,
+        dummy_loader,
+        dummy_loader,
+        ClassificationTask(),
+        TrainConfig(epochs=1),
+        SingleDeviceStrategy(),
+        TrainHooks(dummy_logger),
+        scheduler,
+    )
+    # LambdaLR: lr = 1.0 * 0.5**step_after_last_call
+    # After 4 optimizer steps, scheduler.step() should have been called 4 times.
+    assert abs(optimizer.param_groups[0]["lr"] - 0.5**4) < 1e-9

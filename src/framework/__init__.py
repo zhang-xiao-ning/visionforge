@@ -10,10 +10,13 @@ Dependency direction:
 
 # ---- Runtime ----
 # ---- Experiment ----
+from framework.experiment import build_scheduler
 from framework.experiment.artifacts import RunArtifacts
 from framework.experiment.loader import load_yaml, parse_stages
 from framework.experiment.runner import ExperimentRunner
 from framework.experiment.spec import Experiment, RunParams, Stage, TrainConfig
+
+# ---- Inference ----
 from framework.inference import SamplingConfig, apply_sampling, sample
 
 # ---- Interfaces ----
@@ -96,6 +99,7 @@ __all__ = [
     "RunParams",
     "Stage",
     "TrainConfig",
+    "build_scheduler",
     # registry
     "DATASETS",
     "EXPERIMENTS",

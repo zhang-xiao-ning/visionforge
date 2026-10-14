@@ -1,6 +1,7 @@
 from framework.experiment.artifacts import RunArtifacts
 from framework.experiment.loader import load_yaml, parse_stages
 from framework.experiment.runner import ExperimentRunner
+from framework.experiment.scheduler import build_scheduler
 from framework.experiment.spec import Experiment, RunParams, Stage, TrainConfig
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "RunParams",
     "Stage",
     "TrainConfig",
+    "build_scheduler",
 ]
