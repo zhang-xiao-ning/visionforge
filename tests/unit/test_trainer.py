@@ -142,3 +142,33 @@ def test_train_steps_scheduler_once_per_optimizer_step(dummy_model, dummy_loader
     # LambdaLR: lr = 1.0 * 0.5**step_after_last_call
     # After 4 optimizer steps, scheduler.step() should have been called 4 times.
     assert abs(optimizer.param_groups[0]["lr"] - 0.5**4) < 1e-9
+
+
+def test_train_reports_mean_lr_over_epoch(dummy_model, dummy_loader, dummy_logger):
+    """CSV lr column must be a mean over optimizer steps, not the
+    endpoint. Regression: with a per-step schedule whose start and end
+    are both 0 (single-epoch warmup + cosine), the endpoint LR is 0
+    even though training happened."""
+    optimizer = optim.SGD(dummy_model.parameters(), lr=0.1)
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda step: 0.5**step)
+
+    captured: dict[str, float] = {}
+
+    def on_epoch_end(ctx) -> bool:
+        captured["lr"] = ctx.lr
+        return True
+
+    # 4 batches, accum_steps=1 → 4 optimizer steps.
+    # LRs actually used: 0.1, 0.05, 0.025, 0.0125 → mean = 0.046875.
+    train(
+        dummy_model,
+        optimizer,
+        dummy_loader,
+        dummy_loader,
+        ClassificationTask(),
+        TrainConfig(epochs=1),
+        SingleDeviceStrategy(),
+        TrainHooks(dummy_logger, on_epoch_end=on_epoch_end),
+        scheduler,
+    )
+    assert abs(captured["lr"] - 0.046875) < 1e-9

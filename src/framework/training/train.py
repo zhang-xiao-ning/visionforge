@@ -68,6 +68,7 @@ def train(
 
         running_loss = 0.0
         n_batches = 0
+        epoch_lrs: list[float] = []
         optimizer.zero_grad()
 
         for t, batch in enumerate(loader_train):
@@ -87,6 +88,9 @@ def train(
                 scaler.update()
                 optimizer.zero_grad()
                 task.step_end(model)
+                # Record the LR actually used by this optimizer step,
+                # i.e. before scheduler.step() advances it for next time.
+                epoch_lrs.append(optimizer.param_groups[0]["lr"])
                 scheduler.step()
 
             unnormalized = loss.item() * loop_cfg.accum_steps
@@ -95,7 +99,12 @@ def train(
             hooks.on_step(StepContext(epoch=e, step=t, loss=unnormalized))
 
         avg_loss = running_loss / max(n_batches, 1)
-        lr_now = optimizer.param_groups[0]["lr"]
+        # Mean LR over the epoch's optimizer steps. The endpoint LR is
+        # misleading under a per-step schedule (single-epoch warmup +
+        # cosine starts and ends at 0, so the CSV row would say "lr=0"
+        # even though training happened). The mean is stable across
+        # short and long runs.
+        lr_now = sum(epoch_lrs) / len(epoch_lrs) if epoch_lrs else optimizer.param_groups[0]["lr"]
 
         ctx = EpochContext(
             epoch=e,
