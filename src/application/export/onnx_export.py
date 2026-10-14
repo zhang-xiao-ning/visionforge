@@ -8,7 +8,9 @@ import onnxruntime as ort
 import torch
 import torch.nn as nn
 
+from application.datasets.metadata import DATASET_INFO
 from application.registry import EXPERIMENTS
+from framework.experiment.spec import Experiment
 from framework.utils import CHECKPOINTS_PATH
 
 
@@ -36,19 +38,26 @@ def load_model(checkpoint_path: Path, model_cls: type[nn.Module]) -> nn.Module:
     return model
 
 
-def _export_spec(category: str) -> tuple[tuple[torch.Tensor, ...], dict]:
-    """Return (dummy_args, onnx_io) for a given experiment category.
+def _export_spec(experiment: Experiment) -> tuple[tuple[torch.Tensor, ...], dict]:
+    """Return (dummy_args, onnx_io) for a given experiment.
+
+    Input shapes come from the experiment's declared dataset metadata
+    (`DATASET_INFO`) rather than a literal, so adding a new
+    classification dataset does not require editing this file.
 
     onnx_io = {"input_names": [...], "output_names": [...], "dynamic_axes": {...}}
     """
-    if category == "classification":
-        dummy = torch.randn(1, 3, 32, 32)
+    if experiment.category == "classification":
+        info = DATASET_INFO[experiment.data]
+        dummy = torch.randn(1, *info.input_shape)
         return (dummy,), {
             "input_names": ["input"],
             "output_names": ["output"],
             "dynamic_axes": {"input": {0: "batch"}, "output": {0: "batch"}},
         }
-    if category == "captioning":
+    if experiment.category == "captioning":
+        # Image size is fixed at 224 by Flickr8k's eval transform; the
+        # token sequence length is a free axis.
         dummy_images = torch.randn(1, 3, 224, 224)
         dummy_ids = torch.ones(1, 8, dtype=torch.long)
         return (dummy_images, dummy_ids), {
@@ -60,17 +69,24 @@ def _export_spec(category: str) -> tuple[tuple[torch.Tensor, ...], dict]:
                 "logits": {0: "batch", 1: "seq"},
             },
         }
-    raise ValueError(f"Unsupported category for ONNX export: {category}")
+    if experiment.category == "language_modeling":
+        raise ValueError(
+            "ONNX export is not supported for language_modeling. The "
+            "generate() loop is not a static graph. Export a single "
+            "forward step (input_ids -> logits) directly with "
+            "torch.onnx.export if needed."
+        )
+    raise ValueError(f"Unsupported category for ONNX export: {experiment.category}")
 
 
 def export_to_onnx(
     model: nn.Module,
     onnx_path: Path,
-    category: str,
+    experiment: Experiment,
     opset_version: int = 17,
 ) -> None:
     onnx_path.parent.mkdir(parents=True, exist_ok=True)
-    dummy_args, io = _export_spec(category)
+    dummy_args, io = _export_spec(experiment)
     torch.onnx.export(
         model,
         dummy_args,
@@ -86,23 +102,24 @@ def export_to_onnx(
 def verify_onnx(
     onnx_path: Path,
     pytorch_model: nn.Module,
-    category: str,
+    experiment: Experiment,
     atol: float = 1e-4,
 ) -> None:
     """Compare PyTorch and ONNX outputs on a batch-4 dummy input."""
-    if category == "classification":
-        dummy = torch.randn(4, 3, 32, 32)
+    if experiment.category == "classification":
+        info = DATASET_INFO[experiment.data]
+        dummy = torch.randn(4, *info.input_shape)
         with torch.no_grad():
             torch_out = pytorch_model(dummy).numpy()
         feed = {"input": dummy.numpy()}
-    elif category == "captioning":
+    elif experiment.category == "captioning":
         dummy_images = torch.randn(4, 3, 224, 224)
         dummy_ids = torch.ones(4, 8, dtype=torch.long)
         with torch.no_grad():
             torch_out = pytorch_model(dummy_images, dummy_ids).numpy()
         feed = {"images": dummy_images.numpy(), "input_ids": dummy_ids.numpy()}
     else:
-        raise ValueError(f"Unsupported category for ONNX verify: {category}")
+        raise ValueError(f"Unsupported category for ONNX verify: {experiment.category}")
 
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
     onnx_out = sess.run(None, feed)[0]
@@ -156,16 +173,15 @@ def main() -> None:
 
     experiment = EXPERIMENTS[args.experiment]
     model_cls = experiment.model
-    category = experiment.category
 
     print(f"Experiment: {args.experiment}")
-    print(f"Category:   {category}")
+    print(f"Category:   {experiment.category}")
     print(f"Checkpoint: {ckpt_path}")
     print(f"Output:     {output_path}")
 
     model = load_model(ckpt_path, model_cls)
-    export_to_onnx(model, output_path, category=category, opset_version=args.opset)
-    verify_onnx(output_path, model, category=category)
+    export_to_onnx(model, output_path, experiment=experiment, opset_version=args.opset)
+    verify_onnx(output_path, model, experiment=experiment)
 
 
 if __name__ == "__main__":
