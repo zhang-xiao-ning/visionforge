@@ -1,4 +1,11 @@
-"""Regression tests: verify model accuracy does not collapse after refactors."""
+"""Regression tests: verify metrics do not collapse after refactors.
+
+Each entry is (experiment, epochs, num_train, direction, threshold).
+`direction` is "acc>=" for higher-is-better metrics and "ppl<=" for
+lower-is-better. Thresholds are intentionally loose: they catch
+"training broke" (weights not updating, loss not descending, EMA
+never applied), not "the last 2% of accuracy is still there".
+"""
 
 import dataclasses
 
@@ -12,22 +19,25 @@ pytestmark = pytest.mark.regression
 
 
 BASELINES = [
-    ("mlp", 1, 1000, 0.15),
+    ("mlp", 1, 1000, "acc>=", 0.15),
+    ("nanogpt", 1, None, "ppl<=", 25.0),
 ]
 
 
 @pytest.mark.parametrize(
-    "experiment,epochs,num_train,min_val_acc",
+    "experiment,epochs,num_train,direction,threshold",
     BASELINES,
-    ids=[f"{e}-{ep}ep-{n}imgs" for e, ep, n, _ in BASELINES],
+    ids=[f"{e}-{d}-{t}" for e, _, _, d, t in BASELINES],
 )
-def test_accuracy_above_baseline(
+def test_metric_within_baseline(
     require_regression,
     require_cifar10,
+    require_tinyshakespeare,
     experiment: str,
     epochs: int,
-    num_train: int,
-    min_val_acc: float,
+    num_train: int | None,
+    direction: str,
+    threshold: float,
     tmp_path,
 ) -> None:
     exp = EXPERIMENTS[experiment]
@@ -43,8 +53,20 @@ def test_accuracy_above_baseline(
     result = runner.run()
     runner.cleanup()
 
-    actual = result["best_acc"]
-    assert actual >= min_val_acc, (
-        f"{experiment}: val_acc={actual:.4f} below baseline {min_val_acc}. "
-        f"Possible regression in training logic."
-    )
+    # Primary metric value comes from `best_acc` in the result dict —
+    # the field name is historical; it holds the primary metric's best.
+    value = result["best_acc"]
+    metric = exp.primary_metric
+
+    if direction == "acc>=":
+        assert value >= threshold, (
+            f"{experiment}: {metric}={value:.4f} below baseline {threshold}. "
+            f"Possible regression in training logic."
+        )
+    elif direction == "ppl<=":
+        assert value <= threshold, (
+            f"{experiment}: {metric}={value:.4f} above baseline {threshold}. "
+            f"Possible regression in training logic."
+        )
+    else:  # pragma: no cover
+        raise ValueError(f"Unknown direction: {direction}")
