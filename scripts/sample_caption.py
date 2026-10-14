@@ -13,7 +13,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 
-from application.datasets.flickr8k import _eval_transform
+from application.datasets.flickr8k import eval_transform
 from application.datasets.tokenizers import build_tokenizer
 from application.models import CaptioningModel
 from framework.runtime import get_device
@@ -50,7 +50,7 @@ def main() -> None:
     model = model.to(device)
     model.eval()
 
-    transform = _eval_transform()
+    transform = eval_transform()
     image = Image.open(image_path).convert("RGB")
     image_tensor = transform(image).unsqueeze(0).to(device)
 

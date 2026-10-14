@@ -7,7 +7,7 @@ from PIL import Image
 
 from application.datasets.flickr8k import (
     Flickr8kDataset,
-    _eval_transform,
+    eval_transform,
     load_captions,
     load_split,
     make_collate_fn,
@@ -45,7 +45,7 @@ def test_load_split_reads_lines(tmp_path: Path) -> None:
 def test_dataset_len_is_num_pairs(tmp_path: Path) -> None:
     image_dir, captions = _make_fixture(tmp_path)
     tok = CharTokenizer.build([c for cs in captions.values() for c in cs], min_freq=1)
-    ds = Flickr8kDataset(image_dir, ["a.jpg", "b.jpg"], captions, tok, _eval_transform())
+    ds = Flickr8kDataset(image_dir, ["a.jpg", "b.jpg"], captions, tok, eval_transform())
     # a.jpg has 2 captions, b.jpg has 1
     assert len(ds) == 3
 
@@ -53,7 +53,7 @@ def test_dataset_len_is_num_pairs(tmp_path: Path) -> None:
 def test_dataset_item_shapes(tmp_path: Path) -> None:
     image_dir, captions = _make_fixture(tmp_path)
     tok = CharTokenizer.build([c for cs in captions.values() for c in cs], min_freq=1)
-    ds = Flickr8kDataset(image_dir, ["a.jpg"], captions, tok, _eval_transform())
+    ds = Flickr8kDataset(image_dir, ["a.jpg"], captions, tok, eval_transform())
     item = ds[0]
     assert item["image"].shape == (3, 224, 224)
     assert item["input_ids"].dtype == torch.long
@@ -65,7 +65,7 @@ def test_dataset_item_shapes(tmp_path: Path) -> None:
 def test_input_target_are_shifted(tmp_path: Path) -> None:
     image_dir, captions = _make_fixture(tmp_path)
     tok = CharTokenizer.build(["a cat"], min_freq=1)
-    ds = Flickr8kDataset(image_dir, ["a.jpg"], {"a.jpg": ["a cat"]}, tok, _eval_transform())
+    ds = Flickr8kDataset(image_dir, ["a.jpg"], {"a.jpg": ["a cat"]}, tok, eval_transform())
     item = ds[0]
 
     # input starts with BOS, target ends with EOS
@@ -79,7 +79,7 @@ def test_input_target_are_shifted(tmp_path: Path) -> None:
 def test_collate_pads_to_max_length(tmp_path: Path) -> None:
     image_dir, captions = _make_fixture(tmp_path)
     tok = CharTokenizer.build([c for cs in captions.values() for c in cs], min_freq=1)
-    ds = Flickr8kDataset(image_dir, ["a.jpg", "b.jpg"], captions, tok, _eval_transform())
+    ds = Flickr8kDataset(image_dir, ["a.jpg", "b.jpg"], captions, tok, eval_transform())
     collate = make_collate_fn(tok.pad_id)
     batch = collate([ds[0], ds[1], ds[2]])
 
@@ -99,7 +99,7 @@ def test_max_len_truncates(tmp_path: Path) -> None:
         ["a.jpg"],
         {"a.jpg": [long_caption]},
         tok,
-        _eval_transform(),
+        eval_transform(),
         max_len=16,
     )
     item = ds[0]

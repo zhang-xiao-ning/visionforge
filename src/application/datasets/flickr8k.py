@@ -33,7 +33,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 IGNORE_INDEX = -100  # PyTorch default; not a valid token id
 
 
-def _train_transform(image_size: int = 224) -> transforms.Compose:
+def train_transform(image_size: int = 224) -> transforms.Compose:
     return transforms.Compose(
         [
             transforms.Resize(256),
@@ -45,7 +45,7 @@ def _train_transform(image_size: int = 224) -> transforms.Compose:
     )
 
 
-def _eval_transform(image_size: int = 224) -> transforms.Compose:
+def eval_transform(image_size: int = 224) -> transforms.Compose:
     return transforms.Compose(
         [
             transforms.Resize(256),
@@ -227,8 +227,8 @@ def build_captioning_loaders(
     if num_train is not None:
         train_names = train_names[:num_train]
 
-    train_tf = _train_transform(image_size)
-    eval_tf = _eval_transform(image_size)
+    train_tf = train_transform(image_size)
+    eval_tf = eval_transform(image_size)
 
     train_set = Flickr8kDataset(image_dir, train_names, captions, tokenizer, train_tf, max_len)
     val_set = Flickr8kDataset(image_dir, val_names, captions, tokenizer, eval_tf, max_len)
@@ -303,7 +303,7 @@ def _build_eval_bundle(root: Path, batch_size: int) -> EvalBundle:
     captions = load_captions(text_dir / "Flickr8k.token.txt")
     test_names = load_split(text_dir / "Flickr_8k.testImages.txt")
 
-    eval_set = Flickr8kImageDataset(image_dir, test_names, captions, _eval_transform())
+    eval_set = Flickr8kImageDataset(image_dir, test_names, captions, eval_transform())
     loader = DataLoader(
         eval_set,
         batch_size=batch_size,
