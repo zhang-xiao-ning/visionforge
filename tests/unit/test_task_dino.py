@@ -92,8 +92,7 @@ def test_step_end_ema_moves_teacher_toward_student() -> None:
     task = DINOTask()
     student = _model(head_out=8)
     task.attach(student, torch.device("cpu"))
-    # step_end expects a prior train_step to populate the cached
-    # teacher logits used by the centre update.
+    # step_end expects a prior train_step to populate _last_teacher_logits.
     task.train_step(student, _batch(), torch.device("cpu"), torch.float32)
 
     with torch.no_grad():

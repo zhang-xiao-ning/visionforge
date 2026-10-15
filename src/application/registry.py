@@ -1,7 +1,7 @@
-from application.datasets import cifar10, flickr8k, tinyshakespeare
-from application.metrics import BLEU4
-from application.models import MLP, CaptioningModel, MambaClassifier, NanoGPT, ViT
-from application.tasks import CaptioningTask, ClassificationTask, LMTask
+from application.datasets import cifar10, cifar10_ssl, flickr8k, tinyshakespeare
+from application.metrics import BLEU4, StudentSimilarity
+from application.models import MLP, CaptioningModel, DINOBackbone, MambaClassifier, NanoGPT, ViT
+from application.tasks import CaptioningTask, ClassificationTask, DINOTask, LMTask
 from framework.experiment import Experiment, TrainConfig
 from framework.metrics import Accuracy, CrossEntropy, Perplexity, TokenPerplexity
 from framework.registry import DATASETS, EXPERIMENTS
@@ -15,6 +15,7 @@ from framework.registry import DATASETS, EXPERIMENTS
 DATASETS.register("cifar10", cifar10.build_bundle)
 DATASETS.register("flickr8k", flickr8k.build_bundle)
 DATASETS.register("tinyshakespeare", tinyshakespeare.build_bundle)
+DATASETS.register("cifar10_ssl", cifar10_ssl.build_bundle)
 
 EXPERIMENTS.register(
     Experiment(
@@ -81,5 +82,25 @@ EXPERIMENTS.register(
             lr_scheduler="cosine",
         ),
         category="language_modeling",
+    ),
+)
+
+EXPERIMENTS.register(
+    Experiment(
+        name="dino",
+        model=DINOBackbone,
+        task=DINOTask,
+        data="cifar10_ssl",
+        metrics=[StudentSimilarity],
+        primary_metric="student_sim",
+        config=TrainConfig(
+            optimizer="adamw",
+            learning_rate=5e-4,
+            batch_size=128,
+            weight_decay=0.04,
+            warmup_steps=50,
+            lr_scheduler="cosine",
+        ),
+        category="self_supervised",
     ),
 )
