@@ -33,7 +33,7 @@ CLIP    ?=
 
 # ---- Code dump ----
 PROFILE  ?= all
-DUMP_OUT ?= snapshots/dump.txt
+DUMP_OUT ?=
 
 # ---- Help ----
 help:
@@ -61,8 +61,8 @@ help:
 	@echo "  make sample               generate caption for an image"
 	@echo "      CKPT=path/to.pt IMG=path/to.jpg [MAXTOK=32]"
 	@echo "  make ci                   run scripts/ci.sh"
-	@echo "  make dump                 dump source tree to dump.txt"
-	@echo "      PROFILE=all DUMP_OUT=snapshots/x.txt"
+	@echo "  make dump                 dump source tree to snapshots/dump-<ts>.txt"
+	@echo "      PROFILE=all DUMP_OUT=snapshots/x.txt  (override name)"
 	@echo "  make clean                remove caches"
 
 # ---- Install ----
@@ -143,7 +143,7 @@ board:
 
 # ---- Code dump ----
 dump:
-	uv run python scripts/dump_code.py --profile $(PROFILE) --out $(DUMP_OUT)
+	uv run python scripts/dump_code.py  --profile $(PROFILE) $(if $(DUMP_OUT),--out $(DUMP_OUT),)
 
 # ---- Clean ----
 clean:

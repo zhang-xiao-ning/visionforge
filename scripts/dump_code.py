@@ -23,6 +23,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+DEFAULT_OUT_DIR = Path("snapshots")
+
 # Directories excluded at any depth (caches, VCS, build artifacts).
 ALWAYS_EXCLUDE = {
     "__pycache__",
@@ -93,6 +95,20 @@ PROFILES: dict[str, list[str]] = {
     ],
 }
 
+def _timestamp() -> str:
+    """UTC timestamp safe for filenames: YYYYMMDD-HHMMSS."""
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
+def _resolve_out_path(arg: str | None) -> Path:
+    """Decide where to write.
+
+    No --out  -> snapshots/dump-<UTC>.txt (never overwrites a previous dump).
+    --out P   -> exactly P; caller is responsible for uniqueness.
+    """
+    if arg is None:
+        return DEFAULT_OUT_DIR / f"dump-{_timestamp()}.txt"
+    return Path(arg)
 
 def is_wanted(p: Path) -> bool:
     if p.suffix in WANTED_SUFFIXES:
@@ -141,8 +157,11 @@ def main(argv: list[str]) -> int:
     )
     parser.add_argument(
         "--out",
-        default="dump.txt",
-        help="Output file (default: dump.txt).",
+        default=None,
+        help=(
+            "Output file. Default: snapshots/dump-<UTC timestamp>.txt "
+            "(never overwrites a previous dump)."
+        ),
     )
     args = parser.parse_args(argv[1:])
 
@@ -153,7 +172,7 @@ def main(argv: list[str]) -> int:
     else:
         paths = PROFILES["default"]
 
-    out_path = Path(args.out)
+    out_path = _resolve_out_path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     files = collect_files(paths)
